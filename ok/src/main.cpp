@@ -11,7 +11,7 @@
 #define BLE_RST 9//nrf518822 unused
 
 // LED pin
-#define LED_PIN 30
+#define LED_PIN 18
 
 
 
@@ -82,7 +82,7 @@ BLEService PASSService = BLEService("0000181c-0000-1000-8000-00805F9B34FB");
   blePeripheral.setAppearance(BLE_APPEARANCE_GENERIC_REMOTE_CONTROL);
 
   // set advertised local name and service UUID
-  blePeripheral.setLocalName("LED");
+  blePeripheral.setLocalName("LED2");
   blePeripheral.setAdvertisedServiceUuid(ledService.uuid());
 
   // add service and characteristic
