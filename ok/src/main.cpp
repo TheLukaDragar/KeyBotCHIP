@@ -47,7 +47,7 @@ unsigned long previousMillis3 = 0; // last time update
 unsigned long previousMillis4 = 0; // last time update
 long interval = 2000; 
 long ForceSensingInterval = 100;
-int sensingTime=12000;
+int sensingTime=3000;
 float sensitivity_voltage_limit=1.5;
 
 
@@ -205,19 +205,12 @@ void setup()
 
 void loop()
 {
-  // wait for event/interrupt (low power mode)
-  // Enter Low power mode
-  //Serial.println(F("Sleep"));
-  //sd_app_evt_wait();
-  // Exit Low power mode
-   //Serial.println(F("WakeUp"));
-  //sd_nvic_ClearPendingIRQ(SWI2_IRQn);
-  // poll peripheral
+ 
    unsigned long currentMillis = millis();
   
 
-  if (someoneconnected == true)
-  {
+  //if (someoneconnected == true)
+  //{
    
 
     if (currentMillis - previousMillis > interval)
@@ -297,7 +290,7 @@ void loop()
       previousMillis2 = currentMillis;
      
     } 
-  }
+  //}
 
   //go back and stop doesent need someone connected to work
     if (currentMillis - previousMillis3 > ForceSensingInterval && goback!=0)
