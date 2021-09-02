@@ -115,6 +115,8 @@ BLEService ForceSensorService("4ccd3f02-b066-458c-af72-f1ed81c61a00");
 BLEFloatCharacteristic ForceSensorCharacteristic("4ccd3f02-b066-458c-af72-f1ed81c61a01", BLERead | BLENotify);
 BLEDescriptor ForceDescriptor = BLEDescriptor("2901", "Analog Value in V");
 BLECharCharacteristic ForceSensorLimitCharacteristic("4ccd3f02-b066-458c-af72-f1ed81c61a02", BLERead | BLEWrite | BLENotify);
+BLECharCharacteristic ManualCharacteristic("4ccd3f02-b066-458c-af72-f1ed81c61a03", BLERead | BLEWrite | BLENotify);
+
 
 void blePeripheralConnectHandler(BLECentral &central);
 void blePeripheralDisconnectHandler(BLECentral &central);
@@ -123,6 +125,7 @@ void SubscribedToForce(BLECentral &central, BLECharacteristic &characteristic);
 void ForceSettingWritten(BLECentral &central, BLECharacteristic &characteristic);
 void PASSCharacteristicWritten(BLECentral &central, BLECharacteristic &characteristic);
 void ForceSensorLimitWritten(BLECentral &central, BLECharacteristic &characteristic);
+void ManualWritten(BLECentral &central, BLECharacteristic &characteristic);
 
 void blinkLed(int times, int timedelay);
 void blePeripheralBondedHandler(BLECentral &central);
@@ -374,6 +377,7 @@ void setup()
   blePeripheral.addAttribute(ForceSensorCharacteristic);
   blePeripheral.addAttribute(ForceDescriptor);
   blePeripheral.addAttribute(ForceSensorLimitCharacteristic);
+  blePeripheral.addAttribute(ManualCharacteristic);
 
   blePeripheral.addAttribute(PASSService);
   blePeripheral.addAttribute(PASSCharacteristic);
@@ -399,6 +403,7 @@ void setup()
   ForceSensorCharacteristic.setEventHandler(BLESubscribed, SubscribedToForce);
 
   ForceSensorLimitCharacteristic.setEventHandler(BLEWritten,ForceSettingWritten);
+  ManualCharacteristic.setEventHandler(BLEWritten,ManualWritten);
 
   // begin initialization
   blePeripheral.begin();
@@ -916,6 +921,40 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
 {
  return (float)(x - in_min) * (out_max - out_min) / (float)(in_max - in_min) + out_min;
+}
+
+void ManualWritten(BLECentral &central, BLECharacteristic &characteristic){
+
+  unsigned char a;
+  memcpy(&a, characteristic.value(), characteristic.valueLength());
+  if (strcmp(WrittenPass, PASSWORD) != 0){
+    central.disconnect();
+    return;
+  }
+
+
+  if ((int)a==1)
+  {
+
+    Serial.println(F("LED manual on"));
+      digitalWrite(MOTOR_1,HIGH);
+      delay(200);
+       digitalWrite(MOTOR_1,LOW);
+
+
+
+    
+  }
+  if ((int) a ==0)
+  {    Serial.println(F("LED manual off"));
+      digitalWrite(MOTOR_2,HIGH);
+      delay(200);
+      digitalWrite(MOTOR_2,LOW);
+    
+  }
+  
+  
+
 }
 
 
