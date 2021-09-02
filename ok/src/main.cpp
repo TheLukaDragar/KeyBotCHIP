@@ -6,6 +6,34 @@
 #include <BLEPeripheral.h>
 #include "nrf_soc.h"
 #include "nrf_nvic.h"
+#include "nrf_sdm.h"
+
+
+extern"C"{
+
+  #include "fstorage.h"
+  #include "softdevice_handler.h"
+  #include "app_error.h"
+  #include "nordic_common.h"
+  #include "ble_stack_handler_types.h"
+  #include "ant_stack_handler_types.h"
+  #include "nrf_assert.h"
+  #include "sdk_errors.h"
+  #include "section_vars.h"
+  #include "fstorage_internal_defs.h"
+ 
+  
+}
+#define NUM_PAGES 4
+#if defined(NRF51)
+#define PAGE_SIZE_WORDS 256
+#endif
+
+
+
+
+
+
 
 
 
@@ -40,16 +68,19 @@ long gobacktime=0;
 
 
 
+
 bool someoneconnected = false;
 unsigned long previousMillis = 0;
 unsigned long previousMillis2 = 0;
 unsigned long previousMillis3 = 0; // last time update
 unsigned long previousMillis4 = 0; // last time update
-long interval = 2000; 
+long interval = 2000; //auth interval
 long ForceSensingInterval = 100;
 int sensingTime=3000;
 float sensitivity_voltage_limit=1.5;
 
+uint32_t * addr;
+static uint8_t fs_callback_flag;
 
 long timeaccum=0;              // interval at which to do something (milliseconds)
 
@@ -101,6 +132,70 @@ unsigned char getBatteryLevel(void);
 unsigned int getAnalog(void);
 float getForceSensorVoltage();
 
+/** @brief Function for erasing a page in flash.
+ *
+ * @param page_address Address of the first word in the page to be erased.
+ */
+static void flash_page_erase(uint32_t * page_address)
+{
+    // Turn on flash erase enable and wait until the NVMC is ready:
+    NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Een << NVMC_CONFIG_WEN_Pos);
+
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+    {
+        // Do nothing.
+    }
+
+    // Erase page:
+    NRF_NVMC->ERASEPAGE = (uint32_t)page_address;
+
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+    {
+        // Do nothing.
+    }
+
+    // Turn off flash erase enable and wait until the NVMC is ready:
+    NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos);
+
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+    {
+        // Do nothing.
+    }
+}
+
+
+/** @brief Function for filling a page in flash with a value.
+ *
+ * @param[in] address Address of the first word in the page to be filled.
+ * @param[in] value Value to be written to flash.
+ */
+static void flash_word_write(uint32_t * address, uint32_t value)
+{
+    // Turn on flash write enable and wait until the NVMC is ready:
+    NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
+
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+    {
+        
+    }
+
+    *address = value;
+
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+    {
+        // Do nothing.
+    }
+
+    // Turn off flash write enable and wait until the NVMC is ready:
+    NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos);
+
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+    {
+        // Do nothing.
+    }
+}
+
+
 int32_t temperature_data_get(void)
 {
   int32_t temp;
@@ -109,6 +204,125 @@ int32_t temperature_data_get(void)
 
   return temp / 4;
 }
+
+void eraseflash(){
+   int32_t pageNo = (uint32_t)addr / NRF_FICR->CODEPAGESIZE;
+   Serial.println("erasing PAGE"+String(pageNo));
+
+   uint32_t ret =sd_flash_page_erase(pageNo);
+   
+        while(ret == NRF_ERROR_BUSY){
+        
+          Serial.println("erasing flash");
+        }
+        Serial.println("OK erased"+String(ret==NRF_SUCCESS));
+}
+
+void writetoflash( uint32_t * addrr){
+
+  
+              uint32_t t = 1;
+              uint8_t tt = 2;
+              uint8_t ttt = 3;
+              uint32_t * _flashPageStartAddress=((uint32_t *)(NRF_FICR->CODEPAGESIZE * (NRF_FICR->CODESIZE - 1 - (uint32_t)0)));
+
+              Serial.println((unsigned int)addrr,HEX);
+
+
+              uint32_t ret =sd_flash_write(addrr, (uint32_t*)t, sizeof(t));
+         
+        
+
+        
+
+         while (ret==NRF_ERROR_BUSY){
+           Serial.println(String(ret));
+         }
+          Serial.println("ok"+String(ret==NRF_ERROR_INVALID_ADDR));
+
+}
+
+
+
+static void sys_evt_dispatch(uint32_t sys_evt)
+{
+    //ble_advertising_on_sys_evt(sys_evt);
+		fs_sys_event_handler(sys_evt);
+}
+
+static void fs_evt_handler(fs_evt_t const * const evt, fs_ret_t result)
+{
+
+  Serial.println("CALLBACK");
+    if (result != FS_SUCCESS)
+    {
+        Serial.println("fs handler error");
+        	fs_callback_flag = 0;
+    }
+		else
+		{
+			 Serial.println("fs handler SUCESS");
+				fs_callback_flag = 0;
+		}
+}
+
+FS_REGISTER_CFG(fs_config_t fs_config) =
+		{   .p_start_addr = NULL,
+        .p_end_addr = NULL,
+			  .callback  = fs_evt_handler, // Function for event callbacks.
+				.num_pages = NUM_PAGES,      // Number of physical flash pages required.
+				.priority  = 0xFE            // Priority for flash usage.
+		};
+
+static void power_manage(void)
+{
+    uint32_t err_code = sd_app_evt_wait();
+    APP_ERROR_CHECK(err_code);
+}
+static uint32_t const * address_of_page(uint16_t page_num)
+{
+    return fs_config.p_start_addr + (page_num * PAGE_SIZE_WORDS);
+}
+
+
+void * p1 (){
+
+   uint32_t forcelimit=(uint32_t)*(fs_config.p_start_addr);
+    Serial.println("Now "+String(forcelimit));
+
+   
+
+
+}
+
+void * w1(uint32_t a){
+
+  Serial.println("W1 dela");
+
+  
+
+   uint32_t bb = a;
+
+  fs_ret_t ret2 = fs_store(&fs_config, fs_config.p_start_addr, &bb, 1,p1());
+     Serial.println("stored w1 "+String(ret2)+" "+ String(bb));
+    if (ret2 != FS_SUCCESS)
+    {
+        	Serial.println("error storing");
+    }
+    //while(fs_callback_flag == 1)  {  power_manage(); }
+
+   
+
+    
+
+}
+
+
+
+ 
+
+
+
 
 void setup()
 {
@@ -194,17 +408,225 @@ void setup()
 
   state=0;
   switchCharacteristic.setValue('33');
-  ForceSensorLimitCharacteristic.setValue(0x5);
+
+
+  if(fs_init()!=FS_SUCCESS){
+    Serial.println("FS error");
+  }else{
+     Serial.println("FS Init sucess");
+  }
+
+    uint32_t forcelimit=(uint32_t)*(fs_config.p_start_addr);
+    Serial.println(String(forcelimit));
+    
+  if (forcelimit==0xFFFFFFFF)
+  {
+    static uint32_t defaultt = 0x5;
+
+    Serial.println("Erasing a flash page");
+    fs_ret_t ret =fs_erase(&fs_config, fs_config.p_start_addr, 1,NULL);
+
+     //Serial.println("stored default value"+String(ret));
+    if (ret != FS_SUCCESS)
+    {
+        	Serial.println("errrror storing default value");
+    }
+    ForceSensorLimitCharacteristic.setValue(0x5);
+  }else{
+    Serial.println("FS has entry using it");
+    ForceSensorLimitCharacteristic.setValue((char)forcelimit);
+  }
   
+  
+
+  
+
+  
+    //uint32_t err_code;
+   // err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
+    //Serial.println(err_code);
+    //APP_ERROR_CHECK(err_code);
+  
+
+    
+
+    
+	
+		
+
+  /*
+  Serial.println("Erasing a flash page at address 0x%X"+ String( (uint32_t)fs_config.p_start_addr));
+
+  Serial.println(String(fs_config.p_start_addr==NULL));
+		fs_callback_flag = 1;
+    int a =fs_erase(&fs_config, fs_config.p_start_addr, 1,w1());
+    Serial.println(String(a));
+		if ( a != FS_SUCCESS)
+		{
+			Serial.println("errrror22");
+		}
+    */
+		//while(fs_callback_flag == 1)  {  power_manage(); }
+    /*
+    static uint32_t dd = 0xAAAAAAAA;
+    
+    fs_ret_t ret = fs_store(&fs_config, fs_config.p_start_addr, &dd, 1,w2());
+     Serial.println("stored"+String(ret));
+    if (ret != FS_SUCCESS)
+    {
+        	Serial.println("errrror33");
+    }
+    */
+    //w2();
+    //w3();
+   
+   
+
+    
   // enable low power mode and interrupt
   //sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
 
+  
+
+    /*
+    uint8_t    patwr;
+    uint8_t    patrd;
+    uint8_t    patold;
+    uint32_t   i;
+    uint32_t   pg_size;
+    uint32_t   pg_num;
+
+    
+
+    
+
+ printf("Flashwrite example\n\r");
+    patold  = 0;
+    pg_size = NRF_FICR->CODEPAGESIZE;
+    pg_num  = NRF_FICR->CODESIZE - 1;  // Use last page in flash
+
+    Serial.println(String(pg_size));
+      Serial.println(String(pg_num));
+
+    
+        // Start address:
+        addr = (uint32_t *)(pg_size * pg_num);
+
+       
+
+        //flash_page_erase(addr);
+
+          uint8_t    a=(uint8_t)*(addr);
+           Serial.println( String(a)+" was read from flash 1"  );
+        
+
+        
+        if ( (uint8_t)  255  == (uint8_t)*(addr) || (uint8_t)  0  == (uint8_t)*(addr))
+        {
+           Serial.println("force lim not set");
+            
+           
+        }
+
+        eraseflash();
+
+        
+              uint8_t t = 1;
+              uint8_t tt = 2;
+              uint8_t ttt = 3;
+              
+
+        writetoflash(addr);
+         */
+        
+
+        
+
+         
+         
+      
+
+        //ForceSensorLimitCharacteristic.setValue((uint8_t)*(addr));
+        
+
+
+
+
+
+
+        // Erase page:
+        //flash_page_erase(addr);
+        //i = 0;
+
+        for (int i = 0; i < 5; i++)
+        {
+           uint32_t    a=(uint32_t)*(fs_config.p_start_addr+i);
+           Serial.println( String(a)+" was read from flash"  );
+        }
+        /*
+        uint8_t l = 2;
+        flash_word_write(addr,(uint32_t)l);
+         for (int i = 0; i < 9; i++)
+        {
+           uint8_t    a=(uint8_t)*(addr + i);
+           Serial.println( String(a)+" was read from flash"  );
+        }
+        */
+        
+        
+        /*
+        do
+        {
+            printf("Enter char to write to flash\n\r");
+
+            patwr = patold+1;
+
+
+            if (patold != patwr)
+            {
+                patold = patwr;
+                flash_word_write(addr, (uint32_t)patwr);
+                ++addr;
+                i += 4;
+                Serial.println(String(patwr)+" was write to flash\n\r");
+            }
+            // Read from flash the last written data and send it back:
+            patrd = (uint8_t)*(addr - 1);
+            Serial.println(String(patrd) +" was read from flash\n\r\n\r"  );
+        }
+        while (i < pg_size);
+        */
+    
   
   
 }
 
 void loop()
 {
+
+  uint32_t err_code;
+
+        if (true)
+        {
+            uint32_t evt_id;
+
+            // Pull event from SOC.
+            err_code = sd_evt_get(&evt_id);
+            
+            if (err_code == NRF_ERROR_NOT_FOUND)
+            {
+                //no_more_soc_evts = true;
+            }
+            else if (err_code != NRF_SUCCESS)
+            {
+                //APP_ERROR_HANDLER(err_code);
+            }
+            else
+            {
+                // Call application's SOC event handler.
+                sys_evt_dispatch(evt_id);
+            }
+        }
  
    unsigned long currentMillis = millis();
   
@@ -512,10 +934,18 @@ void ForceSettingWritten(BLECentral &central, BLECharacteristic &characteristic)
   }
 
    Serial.println("Sensitivity set to: "+String(sensitivity_voltage_limit));
-  
 
+    uint32_t forcelim =(uint32_t) a;
 
-
+    Serial.println("Erasing a flash page");
+		fs_callback_flag = 1;
+    fs_ret_t ret =fs_erase(&fs_config, fs_config.p_start_addr, 1,NULL);
+   
+		if ( ret != FS_SUCCESS)
+		{
+			Serial.println("error saving char"+String(a));
+		}
+    w1(forcelim);
 
   /*
   if (strcmp(WrittenPass, PASSWORD) == 0)
