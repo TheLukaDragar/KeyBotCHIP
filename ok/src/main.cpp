@@ -78,6 +78,7 @@ long interval = 2000; //auth interval
 long ForceSensingInterval = 100;
 int sensingTime=3000;
 float sensitivity_voltage_limit=1.5;
+float sensitivity_voltage_limit2=1.5;
 
 uint32_t * addr;
 static uint8_t fs_callback_flag;
@@ -115,6 +116,7 @@ BLEService ForceSensorService("4ccd3f02-b066-458c-af72-f1ed81c61a00");
 BLEFloatCharacteristic ForceSensorCharacteristic("4ccd3f02-b066-458c-af72-f1ed81c61a01", BLERead | BLENotify);
 BLEDescriptor ForceDescriptor = BLEDescriptor("2901", "Analog Value in V");
 BLECharCharacteristic ForceSensorLimitCharacteristic("4ccd3f02-b066-458c-af72-f1ed81c61a02", BLERead | BLEWrite | BLENotify);
+BLECharCharacteristic ForceSensorLimitCharacteristic2("4ccd3f02-b066-458c-af72-f1ed81c61a04", BLERead | BLEWrite | BLENotify);
 BLECharCharacteristic ManualCharacteristic("4ccd3f02-b066-458c-af72-f1ed81c61a03", BLERead | BLEWrite | BLENotify);
 
 
@@ -123,6 +125,7 @@ void blePeripheralDisconnectHandler(BLECentral &central);
 void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &characteristic);
 void SubscribedToForce(BLECentral &central, BLECharacteristic &characteristic);
 void ForceSettingWritten(BLECentral &central, BLECharacteristic &characteristic);
+void ForceSettingWritten2(BLECentral &central, BLECharacteristic &characteristic);
 void PASSCharacteristicWritten(BLECentral &central, BLECharacteristic &characteristic);
 void ForceSensorLimitWritten(BLECentral &central, BLECharacteristic &characteristic);
 void ManualWritten(BLECentral &central, BLECharacteristic &characteristic);
@@ -306,7 +309,7 @@ void * w1(uint32_t a){
 
    uint32_t bb = a;
 
-  fs_ret_t ret2 = fs_store(&fs_config, fs_config.p_start_addr, &bb, 1,p1());
+  fs_ret_t ret2 = fs_store(&fs_config, address_of_page(1), &bb, 1,p1());
      Serial.println("stored w1 "+String(ret2)+" "+ String(bb));
     if (ret2 != FS_SUCCESS)
     {
@@ -314,9 +317,22 @@ void * w1(uint32_t a){
     }
     //while(fs_callback_flag == 1)  {  power_manage(); }
 
-   
+}
+void * w2(uint32_t a){
 
-    
+  Serial.println("W2 dela");
+
+  
+
+   uint32_t bb = a;
+
+  fs_ret_t ret2 = fs_store(&fs_config, address_of_page(2), &bb, 1,p1());
+     Serial.println("stored w2 "+String(ret2)+" "+ String(bb));
+    if (ret2 != FS_SUCCESS)
+    {
+        	Serial.println("error storing");
+    }
+    //while(fs_callback_flag == 1)  {  power_manage(); }
 
 }
 
@@ -377,6 +393,7 @@ void setup()
   blePeripheral.addAttribute(ForceSensorCharacteristic);
   blePeripheral.addAttribute(ForceDescriptor);
   blePeripheral.addAttribute(ForceSensorLimitCharacteristic);
+  blePeripheral.addAttribute(ForceSensorLimitCharacteristic2);
   blePeripheral.addAttribute(ManualCharacteristic);
 
   blePeripheral.addAttribute(PASSService);
@@ -403,6 +420,7 @@ void setup()
   ForceSensorCharacteristic.setEventHandler(BLESubscribed, SubscribedToForce);
 
   ForceSensorLimitCharacteristic.setEventHandler(BLEWritten,ForceSettingWritten);
+  ForceSensorLimitCharacteristic2.setEventHandler(BLEWritten,ForceSettingWritten2);
   ManualCharacteristic.setEventHandler(BLEWritten,ManualWritten);
 
   // begin initialization
@@ -421,15 +439,17 @@ void setup()
      Serial.println("FS Init sucess");
   }
 
-    uint32_t forcelimit=(uint32_t)*(fs_config.p_start_addr);
+    uint32_t forcelimit=(uint32_t)*(address_of_page(1));
+     uint32_t forcelimit2=(uint32_t)*(address_of_page(2));
     Serial.println(String(forcelimit));
+    Serial.println(String(forcelimit2));
     
   if (forcelimit==0xFFFFFFFF)
   {
     static uint32_t defaultt = 0x5;
 
     Serial.println("Erasing a flash page");
-    fs_ret_t ret =fs_erase(&fs_config, fs_config.p_start_addr, 1,NULL);
+    fs_ret_t ret =fs_erase(&fs_config, address_of_page(1), 1,NULL);
 
      //Serial.println("stored default value"+String(ret));
     if (ret != FS_SUCCESS)
@@ -440,6 +460,23 @@ void setup()
   }else{
     Serial.println("FS has entry using it");
     ForceSensorLimitCharacteristic.setValue((char)forcelimit);
+  }
+  if (forcelimit2==0xFFFFFFFF)
+  {
+    static uint32_t defaultt = 0x5;
+
+    Serial.println("Erasing a flash page");
+    fs_ret_t ret =fs_erase(&fs_config,address_of_page(2), 1,NULL);
+
+     //Serial.println("stored default value"+String(ret));
+    if (ret != FS_SUCCESS)
+    {
+        	Serial.println("errrror storing default value");
+    }
+    ForceSensorLimitCharacteristic.setValue(0x5);
+  }else{
+    Serial.println("FS has entry using it");
+    ForceSensorLimitCharacteristic2.setValue((char)forcelimit2);
   }
   
   
@@ -677,7 +714,7 @@ void loop()
        
       }
 
-      if (sensorvoltage>sensitivity_voltage_limit && startsensing==2)
+      if (sensorvoltage>sensitivity_voltage_limit2 && startsensing==2)
       {
         digitalWrite(LED_PIN, LOW);
         digitalWrite(MOTOR_2,LOW);
@@ -751,7 +788,7 @@ void loop()
         
       
       }
-      if (sensorvoltage<sensitivity_voltage_limit && goback==4 && gobacktime<=0)
+      if (sensorvoltage<sensitivity_voltage_limit2 && goback==4 && gobacktime<=0)
       {
         digitalWrite(MOTOR_2,LOW);
         goback=0;
@@ -763,7 +800,7 @@ void loop()
 
 
       gobacktime-=ForceSensingInterval;
-      if (sensorvoltage>=sensitivity_voltage_limit && goback!=0 && gobacktime<=0)
+      if (sensorvoltage>=sensitivity_voltage_limit || sensorvoltage>=sensitivity_voltage_limit2 && goback!=0 && gobacktime<=0)
       {
         digitalWrite(MOTOR_1,LOW);
         digitalWrite(MOTOR_2,LOW);
@@ -978,13 +1015,54 @@ void ForceSettingWritten(BLECentral &central, BLECharacteristic &characteristic)
 
     Serial.println("Erasing a flash page");
 		fs_callback_flag = 1;
-    fs_ret_t ret =fs_erase(&fs_config, fs_config.p_start_addr, 1,NULL);
+    fs_ret_t ret =fs_erase(&fs_config, address_of_page(1), 1,NULL);
    
 		if ( ret != FS_SUCCESS)
 		{
 			Serial.println("error saving char"+String(a));
 		}
     w1(forcelim);
+
+  /*
+  if (strcmp(WrittenPass, PASSWORD) == 0)
+  {
+    blinkLed(2, 50);
+    
+  }
+  else
+  {
+    blinkLed(1, 100);
+    central.disconnect();
+  }
+  */
+}
+
+void ForceSettingWritten2(BLECentral &central, BLECharacteristic &characteristic)
+{
+
+ 
+
+  unsigned char a;
+  memcpy(&a, characteristic.value(), characteristic.valueLength());
+
+  if (0<(int)a && (int) a <=10)
+  {
+    sensitivity_voltage_limit2=mapfloat((float)a,0.0f,10.0f,0.0f,3.0f);
+  }
+
+   Serial.println("Sensitivity set to: "+String(sensitivity_voltage_limit2));
+
+    uint32_t forcelim =(uint32_t) a;
+
+    Serial.println("Erasing a flash page");
+		fs_callback_flag = 1;
+    fs_ret_t ret =fs_erase(&fs_config, address_of_page(2), 1,NULL);
+   
+		if ( ret != FS_SUCCESS)
+		{
+			Serial.println("error saving char"+String(a));
+		}
+    w2(forcelim);
 
   /*
   if (strcmp(WrittenPass, PASSWORD) == 0)
