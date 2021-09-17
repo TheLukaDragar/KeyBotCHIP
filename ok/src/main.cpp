@@ -473,7 +473,7 @@ void setup()
     {
         	Serial.println("errrror storing default value");
     }
-    ForceSensorLimitCharacteristic.setValue(0x5);
+    ForceSensorLimitCharacteristic2.setValue(0x5);
   }else{
     Serial.println("FS has entry using it");
     ForceSensorLimitCharacteristic2.setValue((char)forcelimit2);
@@ -779,7 +779,7 @@ void loop()
       }
       
 
-      if (sensorvoltage<sensitivity_voltage_limit && goback==3 && gobacktime<=0 )
+      if ( goback==3 && gobacktime<=0 )
       {
         digitalWrite(MOTOR_1,LOW);
         goback=0;
@@ -788,7 +788,7 @@ void loop()
         
       
       }
-      if (sensorvoltage<sensitivity_voltage_limit2 && goback==4 && gobacktime<=0)
+      if (goback==4 && gobacktime<=0)
       {
         digitalWrite(MOTOR_2,LOW);
         goback=0;
@@ -799,8 +799,9 @@ void loop()
       ForceSensorCharacteristic.setValueLE(sensorvoltage);
 
 
-      gobacktime-=ForceSensingInterval;
-      if (sensorvoltage>=sensitivity_voltage_limit || sensorvoltage>=sensitivity_voltage_limit2 && goback!=0 && gobacktime<=0)
+      
+      //sensorvoltage>=sensitivity_voltage_limit &&  && 
+      if (goback!=0 && gobacktime<=0)//TODO FIX THIS
       {
         digitalWrite(MOTOR_1,LOW);
         digitalWrite(MOTOR_2,LOW);
@@ -808,7 +809,7 @@ void loop()
         goback=0;
         gobacktime=0;
       }
-      
+      gobacktime-=ForceSensingInterval;
 
       previousMillis3 = currentMillis;
      
@@ -927,7 +928,7 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
     {
 
      
-      Serial.println(F("LED on"));
+      Serial.println(F("Manual Forward"));
       digitalWrite(MOTOR_1,HIGH);
       startsensing=1;
      
@@ -941,7 +942,7 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
     }
     if (switchCharacteristic.value() == '0')
     {
-      Serial.println(F("LED off"));
+      Serial.println(F("Manual Backward"));
       digitalWrite(MOTOR_2,HIGH);
       startsensing=2;
       //digitalWrite(LED_PIN, LOW);
@@ -973,7 +974,7 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic){
   if ((int)a==1)
   {
 
-    Serial.println(F("LED manual on"));
+    Serial.println(F("Manual Forward"));
       digitalWrite(MOTOR_1,HIGH);
       delay(200);
        digitalWrite(MOTOR_1,LOW);
@@ -983,7 +984,7 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic){
     
   }
   if ((int) a ==0)
-  {    Serial.println(F("LED manual off"));
+  {    Serial.println(F("Manual Backward"));
       digitalWrite(MOTOR_2,HIGH);
       delay(200);
       digitalWrite(MOTOR_2,LOW);
