@@ -46,7 +46,7 @@ extern"C"{
 #define LED_PIN 18
 #define MOTOR_1 20
 #define MOTOR_2 22
-#define KEY1_PIN 16
+#define MID_SENSOR 16
 //#define ANALOG_IN_PIN 6
 
 const uint8_t sin_table[] = {0, 0,1,2,4,6,9,12,16,20,24,29,35,40,	46,	53,	59,	66,	74,	81,	88,	96,	104,112,120,128,136,144,152,160,168,175,182,190,197,203,210,216,221,227,
@@ -62,9 +62,12 @@ char myname[7] = "Dragar";
 String tempstring;
 int state = 0;
 
+int check_mid = 0;
+int mid_motor=0;
 int startsensing=0;
 int goback=0;
 long gobacktime=0;
+
 
 
 
@@ -356,6 +359,7 @@ void setup()
   pinMode(MOTOR_1, OUTPUT);
   pinMode(MOTOR_2, OUTPUT);
   pinMode(PIN_A4, INPUT);
+  pinMode(MID_SENSOR, INPUT);
   digitalWrite(PIN_A4, LOW);
 
 
@@ -697,61 +701,102 @@ void loop()
 
       float sensorvoltage = getForceSensorVoltage();
 
-      
-       
+      int mid = digitalRead(MID_SENSOR);
 
-      if (sensorvoltage>sensitivity_voltage_limit && startsensing==1)
+      if (check_mid)
       {
-
-        digitalWrite(LED_PIN, HIGH);
-        digitalWrite(MOTOR_1,LOW);
-        switchCharacteristic.setValue('32');
-        state=1;//LED ON LOCKED
-        startsensing=0;
-        goback=2;
-        gobacktime=timeaccum;
-        timeaccum=0;
-       
-      }
-
-      if (sensorvoltage>sensitivity_voltage_limit2 && startsensing==2)
-      {
-        digitalWrite(LED_PIN, LOW);
-        digitalWrite(MOTOR_2,LOW);
-        switchCharacteristic.setValue('33');
-        state=0;
-        startsensing=0;
-        goback=1;
-        gobacktime=timeaccum;
-        timeaccum=0;
-      }
-       ForceSensorCharacteristic.setValueLE(sensorvoltage);
-
-      timeaccum+=ForceSensingInterval;
-      if (timeaccum>=sensingTime && startsensing!=0)
-      {
-        digitalWrite(MOTOR_1,LOW);
-        digitalWrite(MOTOR_2,LOW);
-        switchCharacteristic.setValue('34');
-
-        if (startsensing==1)
+        if (mid == 1)
         {
-          goback=2;
-        }
-         if (startsensing==2)
+          Serial.println("mid OK");
+          check_mid=0;
+
+          if (mid_motor!=0)
+          {
+            digitalWrite(MOTOR_1, LOW);
+            digitalWrite(MOTOR_2, LOW);
+            mid_motor=0;
+          }
+          
+         
+        }else
         {
-          goback=1;
+          Serial.println("mid NOT ");
+
+          if (mid_motor==0)
+          {
+            digitalWrite(MOTOR_1, HIGH);
+            digitalWrite(MOTOR_2, LOW);
+            mid_motor=1;
+
+          }
+          if (mid_motor==1)
+          {
+            
+          }
+          
+          
+          
+         
         }
         
-        startsensing=0;
-        gobacktime=timeaccum;
-        timeaccum=0;
+        
+      }else
+      {
+          if (sensorvoltage>sensitivity_voltage_limit && startsensing==1)
+          {
+
+            digitalWrite(LED_PIN, HIGH);
+            digitalWrite(MOTOR_1,LOW);
+            switchCharacteristic.setValue('32');
+            state=1;//LED ON LOCKED
+            startsensing=0;
+            goback=2;
+            gobacktime=timeaccum;
+            timeaccum=0;
+          
+          }
+
+          if (sensorvoltage>sensitivity_voltage_limit2 && startsensing==2)
+          {
+            digitalWrite(LED_PIN, LOW);
+            digitalWrite(MOTOR_2,LOW);
+            switchCharacteristic.setValue('33');
+            state=0;
+            startsensing=0;
+            goback=1;
+            gobacktime=timeaccum;
+            timeaccum=0;
+          }
+          ForceSensorCharacteristic.setValueLE(sensorvoltage);
+
+          timeaccum+=ForceSensingInterval;
+          if (timeaccum>=sensingTime && startsensing!=0)
+          {
+            digitalWrite(MOTOR_1,LOW);
+            digitalWrite(MOTOR_2,LOW);
+            switchCharacteristic.setValue('34');
+
+            if (startsensing==1)
+            {
+              goback=2;
+            }
+            if (startsensing==2)
+            {
+              goback=1;
+            }
+            
+            startsensing=0;
+            gobacktime=timeaccum;
+            timeaccum=0;
+          }
+
+          previousMillis2 = currentMillis;
       }
 
       
       
 
-      previousMillis2 = currentMillis;
+     
      
     } 
   //}
@@ -930,6 +975,7 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
      
       Serial.println(F("Manual Forward"));
       digitalWrite(MOTOR_1,HIGH);
+      check_mid=1;
       startsensing=1;
      
       //digitalWrite(LED_PIN, HIGH);
@@ -944,6 +990,7 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
     {
       Serial.println(F("Manual Backward"));
       digitalWrite(MOTOR_2,HIGH);
+      check_mid = 1;
       startsensing=2;
       //digitalWrite(LED_PIN, LOW);
       //state=0;
