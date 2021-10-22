@@ -80,13 +80,16 @@ unsigned long previousMillis4 = 0; // last time update
 long interval = 2000; //auth interval
 long ForceSensingInterval = 100;
 int sensingTime=3000;
+int sensingTimeMID=3000;
 float sensitivity_voltage_limit=1.5;
 float sensitivity_voltage_limit2=1.5;
 
 uint32_t * addr;
 static uint8_t fs_callback_flag;
 
-long timeaccum=0;              // interval at which to do something (milliseconds)
+long timeaccum=0; 
+long timeaccumMID1=0;    
+long timeaccumMID2=0;                 // interval at which to do something (milliseconds)
 
 // create peripheral instance, see pinouts above
 
@@ -604,11 +607,11 @@ void setup()
         //flash_page_erase(addr);
         //i = 0;
 
-        for (int i = 0; i < 5; i++)
-        {
-           uint32_t    a=(uint32_t)*(fs_config.p_start_addr+i);
-           Serial.println( String(a)+" was read from flash"  );
-        }
+        //for (int i = 0; i < 5; i++)
+        //{
+          // uint32_t    a=(uint32_t)*(fs_config.p_start_addr+i);
+           //Serial.println( String(a)+" was read from flash"  );
+        //}
         /*
         uint8_t l = 2;
         flash_word_write(addr,(uint32_t)l);
@@ -694,14 +697,15 @@ void loop()
       }
     }
 
-    
+    int mid = digitalRead(MID_SENSOR)^1;
     //press and stop
     if (currentMillis - previousMillis2 > ForceSensingInterval && startsensing!=0)
     {
 
-      float sensorvoltage = getForceSensorVoltage();
+     
 
-      int mid = digitalRead(MID_SENSOR);
+     
+      Serial.println("mid" +String(mid));
 
       if (check_mid)
       {
@@ -709,40 +713,104 @@ void loop()
         {
           Serial.println("mid OK");
           check_mid=0;
-
+          ForceSensingInterval=100;
+          if (mid_motor==0)
+          {
+            if (startsensing==1)
+            {
+              digitalWrite(MOTOR_1, HIGH);
+            
+            }
+             if (startsensing==2)
+            {
+              digitalWrite(MOTOR_2, HIGH);
+           
+            }
+          }
+          
           if (mid_motor!=0)
           {
             digitalWrite(MOTOR_1, LOW);
             digitalWrite(MOTOR_2, LOW);
             mid_motor=0;
+            timeaccumMID1=0;
+            timeaccumMID2=0;
+            if (startsensing==1)
+            {
+              digitalWrite(MOTOR_1, HIGH);
+              switchCharacteristic.setValue('1');
+            }
+             if (startsensing==2)
+            {
+              digitalWrite(MOTOR_2, HIGH);
+              switchCharacteristic.setValue('0');
+            }
+            
+            
           }
           
          
         }else
         {
-          Serial.println("mid NOT ");
+          
+          
 
           if (mid_motor==0)
           {
+            switchCharacteristic.setValue('35');
+            Serial.println("MID NOT OK STARTING CALIBRATION");
+            ForceSensingInterval=10;
+
             digitalWrite(MOTOR_1, HIGH);
             digitalWrite(MOTOR_2, LOW);
             mid_motor=1;
+            timeaccumMID1=0;
+            timeaccumMID2=0;
+
 
           }
           if (mid_motor==1)
           {
+
+            timeaccumMID1+=ForceSensingInterval;
+            Serial.println("time accum mid 1: " + String(timeaccumMID1));
+            if (timeaccumMID1>sensingTimeMID)
+            {
+              mid_motor=2;
+              digitalWrite(MOTOR_2, HIGH);
+              digitalWrite(MOTOR_1, LOW);
+               Serial.println("switching motors on mid");
+              delay(100);
+
+            }
+            
             
           }
-          
-          
-          
-         
+          if (mid_motor==2)
+          {
+
+            timeaccumMID2+=ForceSensingInterval;
+              Serial.println("time accum mid 2: " + String(timeaccumMID2));
+            if (timeaccumMID2>sensingTimeMID*2)
+            {
+              mid_motor=0;
+              digitalWrite(MOTOR_2, LOW);
+              digitalWrite(MOTOR_1, LOW);
+              //EROR SETING MID
+              Serial.println("Error setting mid");
+              switchCharacteristic.setValue('34');
+              startsensing=0;
+            }    
+          }
         }
+      
         
         
-      }else
+      }
+      else
       {
-          if (sensorvoltage>sensitivity_voltage_limit && startsensing==1)
+         float sensorvoltage = getForceSensorVoltage();
+          if (sensorvoltage>sensitivity_voltage_limit  && startsensing==1)
           {
 
             digitalWrite(LED_PIN, HIGH);
@@ -790,8 +858,10 @@ void loop()
             timeaccum=0;
           }
 
-          previousMillis2 = currentMillis;
+          
       }
+
+      previousMillis2 = currentMillis;
 
       
       
@@ -824,7 +894,7 @@ void loop()
       }
       
 
-      if ( goback==3 && gobacktime<=0 )
+      if ( goback==3 && (mid || gobacktime<=0) )
       {
         digitalWrite(MOTOR_1,LOW);
         goback=0;
@@ -833,7 +903,7 @@ void loop()
         
       
       }
-      if (goback==4 && gobacktime<=0)
+      if (goback==4 && (mid || gobacktime<=0))
       {
         digitalWrite(MOTOR_2,LOW);
         goback=0;
@@ -973,8 +1043,8 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
     {
 
      
-      Serial.println(F("Manual Forward"));
-      digitalWrite(MOTOR_1,HIGH);
+      Serial.println(F("Going Forward"));
+      
       check_mid=1;
       startsensing=1;
      
@@ -988,8 +1058,8 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
     }
     if (switchCharacteristic.value() == '0')
     {
-      Serial.println(F("Manual Backward"));
-      digitalWrite(MOTOR_2,HIGH);
+      Serial.println(F("Going Backward"));
+      
       check_mid = 1;
       startsensing=2;
       //digitalWrite(LED_PIN, LOW);
