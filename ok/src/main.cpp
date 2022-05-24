@@ -46,8 +46,12 @@ extern"C"{
 #define LED_PIN 18
 #define MOTOR_1 20
 #define MOTOR_2 22
-#define MID_SENSOR 16
+#define MID_SENSOR 21
 //#define ANALOG_IN_PIN 6
+#define LED_0 23
+#define LED_1 24
+#define LED_2 25
+
 
 const uint8_t sin_table[] = {0, 0,1,2,4,6,9,12,16,20,24,29,35,40,	46,	53,	59,	66,	74,	81,	88,	96,	104,112,120,128,136,144,152,160,168,175,182,190,197,203,210,216,221,227,
                232,236,240,244,247,250,252,254,255,255,255,255,255,254,252,250,247,244,240,236,232,227,221,216,210,203,197,190,182,175,168,160,152,144,136,128,120,112,104,
@@ -365,6 +369,12 @@ void setup()
   pinMode(MID_SENSOR, INPUT);
   digitalWrite(PIN_A4, LOW);
 
+  pinMode(LED_0,OUTPUT);
+  pinMode(LED_1,OUTPUT);
+  pinMode(LED_2,OUTPUT);
+
+
+
 
 /*
   pinMode(KEY1_PIN,INPUT);
@@ -382,7 +392,7 @@ void setup()
   blePeripheral.setAppearance(BLE_APPEARANCE_GENERIC_REMOTE_CONTROL);
 
   // set advertised local name and service UUID
-  blePeripheral.setLocalName("LED2");
+  blePeripheral.setLocalName("LED3");
   blePeripheral.setAdvertisedServiceUuid(ledService.uuid());
 
   // add service and characteristic
@@ -652,6 +662,8 @@ void setup()
 
 void loop()
 {
+
+  
 
   uint32_t err_code;
 
@@ -1212,6 +1224,27 @@ void blinkLed(int times, int delaytime)
     digitalWrite(LED_PIN, LOW);
     delay(delaytime);
     digitalWrite(LED_PIN, state);
+
+    /*
+
+     digitalWrite(LED_0, HIGH);
+    delay(delaytime);
+    digitalWrite(LED_0, LOW);
+    delay(delaytime);
+    digitalWrite(LED_0, state);
+
+     digitalWrite(LED_1, HIGH);
+    delay(delaytime);
+    digitalWrite(LED_1, LOW);
+    delay(delaytime);
+    digitalWrite(LED_1, state);
+
+     digitalWrite(LED_2, HIGH);
+    delay(delaytime);
+    digitalWrite(LED_2, LOW);
+    delay(delaytime);
+    digitalWrite(LED_2, state);
+    */
   }
 }
 
