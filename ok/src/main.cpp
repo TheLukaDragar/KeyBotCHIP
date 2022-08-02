@@ -30,8 +30,8 @@ extern "C"
 #define BLE_RST 9  // nrf518822 unused
 // LED pin
 #define LED_PIN 18
-#define MOTOR_1 20
-#define MOTOR_2 22
+#define MOTOR_1 22
+#define MOTOR_2 20
 #define MID_SENSOR 21
 #define DRV_SLEEP 19
 //#define MID_SENSOR 16 // FOR TESTING ONLY key 1
@@ -69,13 +69,18 @@ long MIN_LOCKING_TIME = 1000;
 long MIN_UNLOCKING_TIME = 1000;
 long MAX_LOCKING_TIME = 5000;
 long MAX_UNLOCKING_TIME = 5000;
-long LOCKING_TIME = 1000;
-long UNLOCKING_TIME = 1000; // pazi more bit toliko da vsaj spremeni mid sensor
+long LOCKING_TIME = 1500;
+long UNLOCKING_TIME = 1500; // pazi more bit toliko da vsaj spremeni mid sensor
 int calibrationinprogress = 0;
 int calibrationstatus = 0;
+int calibdir=0;
+int manualgotomidinprogress = 0;
+long MAXGOTOMIDTIME1=4000;
+long MAXGOTOMIDTIME2=6000;
 uint32_t *addr;
 static uint8_t fs_callback_flag;
-long timeaccum = 0; // interval at which to do something (milliseconds)
+long timeaccum = 0;
+long timeaccum2 = 0; // interval at which to do something (milliseconds)
 int mid = 0;            // the current reading from the input pin
 int lastMidState = LOW;
 int midBeforeBack = 0;
@@ -99,7 +104,7 @@ BLERemoteService remoteUserDataAttributeService = BLERemoteService("181C");
 // create remote characteristics
 BLERemoteCharacteristic remoteDeviceKeyCharacteristic = BLERemoteCharacteristic("2a3d", BLERead);
 BLEService batteryService("180F");
-BLEUnsignedCharCharacteristic batteryLevelCharacteristic("2A19", BLERead);
+BLEUnsignedCharCharacteristic batteryLevelCharacteristic("4ccd3f02-b066-458c-af72-f1ed81c61a06", BLERead);
 BLEService temperatureService("180A");
 BLEUnsignedIntCharacteristic temperatureCharacteristic("2A6E", BLERead);
 BLEService ForceSensorService("4ccd3f02-b066-458c-af72-f1ed81c61a00");
@@ -116,6 +121,7 @@ void blePeripheralDisconnectHandler(BLECentral &central);
 void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &characteristic);
 void SubscribedToForce(BLECentral &central, BLECharacteristic &characteristic);
 void SubscribedToCalibrate(BLECentral &central, BLECharacteristic &characteristic);
+void SubscribedToManual(BLECentral &central, BLECharacteristic &characteristic);
 
 void ForceSettingWritten(BLECentral &central, BLECharacteristic &characteristic);
 void ForceSettingWritten2(BLECentral &central, BLECharacteristic &characteristic);
@@ -339,6 +345,7 @@ void setup()
   ForceSensorLimitCharacteristic.setEventHandler(BLEWritten, ForceSettingWritten);
   ForceSensorLimitCharacteristic2.setEventHandler(BLEWritten, ForceSettingWritten2);
   ManualCharacteristic.setEventHandler(BLEWritten, ManualWritten);
+  ManualCharacteristic.setEventHandler(BLESubscribed,SubscribedToManual);
 
   CalibrateCharacteristic.setEventHandler(BLEWritten, CalibrateWritten);
   CalibrateCharacteristic.setEventHandler(BLESubscribed, SubscribedToCalibrate);
@@ -540,6 +547,45 @@ void loop()
   }
   lastMidState = mid_reading;
   // Serial.println("mid is: " + String(mid));
+
+   if (currentMillis - previousMillis2 > ForceSensingInterval && manualgotomidinprogress != 0)
+  {
+
+    Serial.println("MID is "+ String(mid)+" "+" before was: "+String(midBefore));
+
+    //MANUAL MID FUNCTION 
+    if(midBefore!=mid){
+      //sucess found mid 
+       digitalWrite(MOTOR_1, LOW);
+      digitalWrite(MOTOR_2, LOW);
+       manualgotomidinprogress=0;
+      ManualCharacteristic.setValue(3);
+      timeaccum2=0;
+    }
+
+    if(timeaccum2 >= MAXGOTOMIDTIME1 && manualgotomidinprogress==1){
+      //reverse direction
+       digitalWrite(MOTOR_1, LOW);
+       delay(100);
+       digitalWrite(MOTOR_2, HIGH);
+       manualgotomidinprogress=2;
+       timeaccum2=0;
+
+
+    }
+    if(timeaccum2 >= MAXGOTOMIDTIME2 && manualgotomidinprogress==2){
+      //reverse direction
+       digitalWrite(MOTOR_2, LOW);
+       //ERROR FINDING MID
+       ManualCharacteristic.setValue(4);
+       manualgotomidinprogress=0;
+       timeaccum2=0;
+    }
+
+    timeaccum2+=ForceSensingInterval;
+    previousMillis2=currentMillis;
+
+  }
 
   // press and stop
   if (currentMillis - previousMillis2 > ForceSensingInterval && startsensing != 0)
@@ -805,6 +851,7 @@ void blePeripheralDisconnectHandler(BLECentral &central)
   Serial.print(F("Disconnected event, central: "));
   someoneconnected = false;
   calibrationinprogress = 0;
+  
 
   Serial.println(central.address());
   blinkLed(8, 100);
@@ -907,6 +954,17 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic)
     delay(200);
     digitalWrite(MOTOR_2, LOW);
   }
+  if ((int)a == 2)
+  {
+
+    Serial.println(F("Manual Go to mid"));
+    manualgotomidinprogress=1;
+    midBefore = mid;
+    digitalWrite(MOTOR_2, LOW);
+    digitalWrite(MOTOR_1, LOW);
+    digitalWrite(MOTOR_1, HIGH);
+    
+  }
 }
 void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
 {
@@ -918,6 +976,7 @@ void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
     if (CalibrateCharacteristic.value() == '1')
     {
       Serial.println(F("Calibrate Going Forward"));
+      calibdir=1;
 
       if (!calibrationinprogress)
       {
@@ -949,6 +1008,8 @@ void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
     {
       Serial.println(F("Calibrate Going Backward"));
 
+       calibdir=2;
+
       if (!calibrationinprogress)
       {
         UNLOCKING_TIME = MIN_UNLOCKING_TIME;
@@ -979,6 +1040,24 @@ void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
     {
 
       // OK we are done calibrating
+
+      if(calibrationinprogress==1){
+
+        if(calibdir==2){
+          UNLOCKING_TIME+=200;
+          calibdir=0;
+        }
+        if (calibdir==1)
+        {
+          LOCKING_TIME+=200;
+          calibdir=0;
+        }
+        
+
+
+
+      }
+      
       calibrationinprogress = 0;
       Serial.println(F("Calibrate Done"));
       Serial.println(startsensing);
@@ -1058,6 +1137,11 @@ void SubscribedToForce(BLECentral &central, BLECharacteristic &characteristic)
 void SubscribedToCalibrate(BLECentral &central, BLECharacteristic &characteristic)
 {
   Serial.print(F("Notifications enabled for Calibrate "));
+}
+
+void SubscribedToManual(BLECentral &central, BLECharacteristic &characteristic)
+{
+  Serial.print(F("Notifications enabled for MANUAL "));
 }
 void blinkLed(int times, int delaytime)
 {
