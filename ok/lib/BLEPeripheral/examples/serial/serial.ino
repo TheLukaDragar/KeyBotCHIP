@@ -9,7 +9,7 @@
  * replacement. Data transfers are routed through a BLE service with TX and RX characteristics. To make the
  * service discoverable all UUIDs are NUS (Nordic UART Service) compatible.
  *
- * Please note that TX and RX characteristics use Notify and WriteWithoutResponse, so there's no guarantee
+ * Please note that TX and  characteristics use Notify and WriteWithoutResponse, so there's no guarantee
  * that the data will make it to the other end. However, under normal circumstances and reasonable signal
  * strengths everything works well.
  */

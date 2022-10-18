@@ -4,11 +4,13 @@
 // Import libraries (BLEPeripheral depends on SPI)
 #include <SPI.h>
 #include <BLEPeripheral.h>
+
 #include "nrf_soc.h"
 #include "nrf_nvic.h"
 #include "nrf_sdm.h"
 extern "C"
 {
+#include "BLESerial.h"
 #include "fstorage.h"
 #include "softdevice_handler.h"
 #include "app_error.h"
@@ -34,7 +36,9 @@ extern "C"
 #define MOTOR_2 20
 #define MID_SENSOR 21
 #define DRV_SLEEP 19
-#define UNLOCK_SENSOR 17
+#define UNLOCK_SENSOR 3
+
+BLESerial BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
 //#define MID_SENSOR 16 // FOR TESTING ONLY key 1
 //#define ANALOG_IN_PIN 6
 //#define LED_0 23
@@ -70,8 +74,8 @@ float sensitivity_voltage_limit = 1.5;
 float sensitivity_voltage_limit2 = 1.5;
 long MIN_LOCKING_TIME = 1000;
 long MIN_UNLOCKING_TIME = 1000;
-long MAX_LOCKING_TIME = 5000;
-long MAX_UNLOCKING_TIME = 5000;
+long MAX_LOCKING_TIME = 7000;
+long MAX_UNLOCKING_TIME = 7000;
 long LOCKING_TIME = 1500;
 long UNLOCKING_TIME = 1500; // pazi more bit toliko da vsaj spremeni mid sensor
 int calibrationinprogress = 0;
@@ -93,13 +97,16 @@ unsigned long debounceDelay = 10;
 int midBefore = 0;
 int mid_reading = 0;
 
+
+int key_signal_begin = 0;
 int key_signal = 0;
 int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
 
+
 // create peripheral instance, see pinouts above
-BLEPeripheral blePeripheral = BLEPeripheral(BLE_REQ, BLE_RDY, BLE_RST);
+//BLEPeripheral blePeripheral = BLEPeripheral(BLE_REQ, BLE_RDY, BLE_RST);
 // BLEBondStore bleBondStore;
 //  create service
 BLEService ledService = BLEService("00001815-0000-1000-8000-00805F9B34FB");
@@ -294,6 +301,8 @@ void *w2(uint32_t a)
 void setup()
 {
   Serial.begin(115200);
+  //BLESerial.begin();
+
   // set LED pin to output mode
   pinMode(LED_PIN, OUTPUT);
   pinMode(MOTOR_1, OUTPUT);
@@ -305,7 +314,9 @@ void setup()
   digitalWrite(DRV_SLEEP,LOW);
   //pinMode(PIN_A4, INPUT);
   pinMode(MID_SENSOR, INPUT);
-  pinMode(UNLOCK_SENSOR, INPUT);
+  //pinMode(UNLOCK_SENSOR, INPUT);
+
+  pinMode(UNLOCK_SENSOR, INPUT); //A1 ANALOG
 
   //digitalWrite(PIN_A4, LOW);
   // pinMode(LED_0, OUTPUT);
@@ -318,36 +329,36 @@ void setup()
     */
   // bleBondStore.clearData();
   // blePeripheral.setBondStore(bleBondStore);
-  blePeripheral.setAppearance(BLE_APPEARANCE_GENERIC_REMOTE_CONTROL);
+  BLESerial.setAppearance(BLE_APPEARANCE_GENERIC_REMOTE_CONTROL);
   // set advertised local name and service UUID
-  blePeripheral.setLocalName("LED5");
-  blePeripheral.setAdvertisedServiceUuid(ledService.uuid());
+  BLESerial.setLocalName("LED5");
+  BLESerial.setAdvertisedServiceUuid(ledService.uuid());
   // add service and characteristic
-  blePeripheral.addAttribute(batteryService);
-  blePeripheral.addAttribute(batteryLevelCharacteristic);
-  blePeripheral.addAttribute(temperatureService);
-  blePeripheral.addAttribute(temperatureCharacteristic);
-  blePeripheral.addAttribute(ledService);
-  blePeripheral.addAttribute(switchCharacteristic);
-  blePeripheral.addAttribute(SWITCHDescriptor);
-  blePeripheral.addAttribute(CalibrateCharacteristic);
-  blePeripheral.addAttribute(CalibrationDescriptor);
-  blePeripheral.addAttribute(ForceSensorService);
-  blePeripheral.addAttribute(ForceSensorCharacteristic);
-  blePeripheral.addAttribute(ForceDescriptor);
-  blePeripheral.addAttribute(ForceSensorLimitCharacteristic);
-  blePeripheral.addAttribute(ForceSensorLimitCharacteristic2);
-  blePeripheral.addAttribute(ManualCharacteristic);
+  BLESerial.addAttribute(batteryService);
+  BLESerial.addAttribute(batteryLevelCharacteristic);
+  BLESerial.addAttribute(temperatureService);
+  BLESerial.addAttribute(temperatureCharacteristic);
+  BLESerial.addAttribute(ledService);
+  BLESerial.addAttribute(switchCharacteristic);
+  BLESerial.addAttribute(SWITCHDescriptor);
+  BLESerial.addAttribute(CalibrateCharacteristic);
+  BLESerial.addAttribute(CalibrationDescriptor);
+  BLESerial.addAttribute(ForceSensorService);
+  BLESerial.addAttribute(ForceSensorCharacteristic);
+  BLESerial.addAttribute(ForceDescriptor);
+  BLESerial.addAttribute(ForceSensorLimitCharacteristic);
+  BLESerial.addAttribute(ForceSensorLimitCharacteristic2);
+  BLESerial.addAttribute(ManualCharacteristic);
 
-  blePeripheral.addAttribute(PASSService);
-  blePeripheral.addAttribute(PASSCharacteristic);
-  blePeripheral.addRemoteAttribute(remoteUserDataAttributeService);
-  blePeripheral.addRemoteAttribute(remoteDeviceKeyCharacteristic);
+  BLESerial.addAttribute(PASSService);
+  BLESerial.addAttribute(PASSCharacteristic);
+  BLESerial.addRemoteAttribute(remoteUserDataAttributeService);
+  BLESerial.addRemoteAttribute(remoteDeviceKeyCharacteristic);
   // assign event handlers for connected, disconnected to peripheral
-  blePeripheral.setEventHandler(BLEConnected, blePeripheralConnectHandler);
-  blePeripheral.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
-  blePeripheral.setEventHandler(BLEBonded, blePeripheralBondedHandler);
-  blePeripheral.setEventHandler(BLERemoteServicesDiscovered, blePeripheralRemoteServicesDiscoveredHandler);
+  BLESerial.setEventHandler(BLEConnected, blePeripheralConnectHandler);
+  BLESerial.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
+  BLESerial.setEventHandler(BLEBonded, blePeripheralBondedHandler);
+  BLESerial.setEventHandler(BLERemoteServicesDiscovered, blePeripheralRemoteServicesDiscoveredHandler);
   remoteDeviceKeyCharacteristic.setEventHandler(BLEValueUpdated, bleRemoteDeviceNameCharacteristicValueUpdatedHandle);
   // assign event handlers for characteristic
   switchCharacteristic.setEventHandler(BLEWritten, switchCharacteristicWritten);
@@ -362,8 +373,11 @@ void setup()
   CalibrateCharacteristic.setEventHandler(BLESubscribed, SubscribedToCalibrate);
 
   // begin initialization
-  blePeripheral.begin();
+  BLESerial.begin();
+  
   Serial.println(F("BLE LED Peripheral"));
+
+
   blinkLed(1, 1000);
   state = 0;
   switchCharacteristic.setValue('33');
@@ -511,6 +525,8 @@ printf("Flashwrite example\n\r");
 }
 void loop()
 {
+
+
   uint32_t err_code;
   if (true)
   {
@@ -565,34 +581,120 @@ void loop()
   {
     previousMillis5 = currentMillis;
 
-      key_signal_before=key_signal;
-      key_signal_tmp = digitalRead(UNLOCK_SENSOR);
-      //print
-       //Serial.println("key_signal_tmp is: " + String(key_signal_tmp));
-      if(key_signal_tmp==1)
-      {
-        key_signal_count++;
+      // key_signal_before=key_signal;
+      // key_signal_tmp = digitalRead(UNLOCK_SENSOR);
+      
+      // if(key_signal_tmp==1)
+      // {
+      //   key_signal_count++;
 
-        Serial.println("key_signal_count is: " + String(key_signal_count));
-      }
-      else
-      {
-        key_signal_count=0;
-      }
-      if(key_signal_count>3)
-      {
-        key_signal=1;
-      }
-      else
-      {
-        key_signal=0;
-      }
+      //   Serial.println("key_signal_count is: " + String(key_signal_count));
+      // }
+      // else
+      // {
+      //   key_signal_count=0;
+      // }
+      // if(key_signal_count>3)
+      // {
+      //   key_signal=1;
+      // }
+      // else
+      // {
+      //   key_signal=0;
+      // }
+
       
 
-      //print time and key_signal together
-      //Serial.println("key_signal "+String(currentMillis) + " " + String(key_signal));
       
+      
+      key_signal_tmp = analogRead(UNLOCK_SENSOR);
       ForceSensorCharacteristic.setValueLE(key_signal_tmp);
+
+      BLESerial.println(String(key_signal_tmp));
+
+      
+
+      if(key_signal_tmp>300 && key_signal_begin==0){
+
+        key_signal_begin=1;
+         Serial.println();
+
+      }
+      int read1 = 0;
+      int read0 = 0;
+      if(key_signal_begin){
+
+        //read the key_signal 200 times
+
+        
+
+        for (int i = 0; i < 1000; i++)
+        {
+          key_signal_tmp = analogRead(UNLOCK_SENSOR);
+
+          if(key_signal_tmp>300){
+            read1++;
+          }
+          else{
+            read0++;
+          }
+          
+        
+        //format to string
+
+        //char str[] = "0"; 
+        //format wuth leading zeros
+        //sprintf(str, "%d", key_signal_tmp);
+      
+
+         Serial.print("" + String(key_signal_tmp>300));
+
+         key_signal_count++;
+
+         }
+
+      }
+      if (key_signal_count>40)
+     {
+      Serial.println("");
+      
+
+      //check if the number of 1s and 0s is beetwen a range of 500+/-200
+
+      if(read1>300 && read1<700){
+        Serial.println("key_signal is valid ");
+       
+
+        if(startsensing){
+           key_signal=1;
+
+        }
+
+        
+        
+       
+      }
+      else{
+        //sensor lost his mind
+        Serial.println("key_signal is invalid ");
+        Serial.println("read 1s: " + String(read1));
+      Serial.println("read 0s: " + String(read0));
+
+        //key_signal=0;
+      }
+
+      key_signal_begin=0;
+      key_signal_count=0;
+      read0=0;
+      read1=0;
+
+
+     }
+
+    
+      
+      
+     
   }
   
   
@@ -663,15 +765,15 @@ void loop()
     Serial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal) );
 
     // float sensorvoltage = getForceSensorVoltage();
-    if (((key_signal_before==0 && key_signal==1) || timeaccum >= MAX_UNLOCKING_TIME  )  && startsensing == 1)
+    if (((key_signal==1) || timeaccum >= MAX_UNLOCKING_TIME  )  && startsensing == 1)
     {
       Serial.println("timeaccum is: " + String(timeaccum));
       //Serial.println("Locking Time is : " + String(LOCKING_TIME));
-      Serial.println("key_signal is: " + String(key_signal) + " and before is: " + String(key_signal_before));
+      Serial.println("key_signal is: " + String(key_signal) );
 
       digitalWrite(LED_PIN, HIGH);
       digitalWrite(MOTOR_1, LOW);
-      if (key_signal_before==0 && key_signal==1 && timeaccum < MAX_UNLOCKING_TIME)
+      if (key_signal==1 && timeaccum < MAX_UNLOCKING_TIME)
       {
         switchCharacteristic.setValue('32');
       }
@@ -706,17 +808,17 @@ void loop()
         midBeforeBack = mid;
       }
     }
-    if (((key_signal_before==0 && key_signal==1) || timeaccum >= MAX_LOCKING_TIME  ) && startsensing == 2)
+    if ((( key_signal==1) || timeaccum >= MAX_LOCKING_TIME  ) && startsensing == 2)
     {
 
       Serial.println("timeaccum is: " + String(timeaccum));
       //Serial.println("Unlocking Time is : " + String(UNLOCKING_TIME));
       //print key_signal
-      Serial.println("key_signal is: " + String(key_signal) + " and before is: " + String(key_signal_before));
+      Serial.println("key_signal is: " + String(key_signal));
 
       digitalWrite(LED_PIN, LOW);
       digitalWrite(MOTOR_2, LOW);
-      if (key_signal_before==0 && key_signal==1 && timeaccum < MAX_LOCKING_TIME)
+      if (key_signal==1 && timeaccum < MAX_LOCKING_TIME)
       {
         switchCharacteristic.setValue('33');
       }
@@ -764,6 +866,9 @@ void loop()
   // go back and stop doesent need someone connected to work
   if (currentMillis - previousMillis3 > ForceSensingInterval && goback != 0)
   {
+    if(key_signal){
+      key_signal=0;
+    }
     Serial.println("going back " + String(gobacktime));
     // float sensorvoltage = getForceSensorVoltage();
     if (goback == 1)
@@ -870,7 +975,13 @@ void loop()
     sd_nvic_ClearPendingIRQ(SWI2_IRQn);
     // poll peripheral
   }
-  blePeripheral.poll();
+
+   BLESerial.poll();
+
+
+
+  //BLESerial.poll();
+  
   /*
      if (currentMillis - previousMillis4 > 10 ){
        previousMillis4=currentMillis;
@@ -895,6 +1006,8 @@ void loop()
   previous = reading;
   */
 }
+
+
 void blePeripheralConnectHandler(BLECentral &central)
 {
   // central connected event handler
