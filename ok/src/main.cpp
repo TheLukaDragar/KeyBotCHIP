@@ -38,7 +38,7 @@ extern "C"
 #define DRV_SLEEP 19
 #define UNLOCK_SENSOR 3
 
-BLESerial BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
+BLESerial bleSerial = BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
 //#define MID_SENSOR 16 // FOR TESTING ONLY key 1
 //#define ANALOG_IN_PIN 6
 //#define LED_0 23
@@ -329,36 +329,36 @@ void setup()
     */
   // bleBondStore.clearData();
   // blePeripheral.setBondStore(bleBondStore);
-  BLESerial.setAppearance(BLE_APPEARANCE_GENERIC_REMOTE_CONTROL);
+  bleSerial.setAppearance(BLE_APPEARANCE_GENERIC_REMOTE_CONTROL);
   // set advertised local name and service UUID
-  BLESerial.setLocalName("LED5");
-  BLESerial.setAdvertisedServiceUuid(ledService.uuid());
+  bleSerial.setLocalName("LED5");
+  bleSerial.setAdvertisedServiceUuid(ledService.uuid());
   // add service and characteristic
-  BLESerial.addAttribute(batteryService);
-  BLESerial.addAttribute(batteryLevelCharacteristic);
-  BLESerial.addAttribute(temperatureService);
-  BLESerial.addAttribute(temperatureCharacteristic);
-  BLESerial.addAttribute(ledService);
-  BLESerial.addAttribute(switchCharacteristic);
-  BLESerial.addAttribute(SWITCHDescriptor);
-  BLESerial.addAttribute(CalibrateCharacteristic);
-  BLESerial.addAttribute(CalibrationDescriptor);
-  BLESerial.addAttribute(ForceSensorService);
-  BLESerial.addAttribute(ForceSensorCharacteristic);
-  BLESerial.addAttribute(ForceDescriptor);
-  BLESerial.addAttribute(ForceSensorLimitCharacteristic);
-  BLESerial.addAttribute(ForceSensorLimitCharacteristic2);
-  BLESerial.addAttribute(ManualCharacteristic);
+  bleSerial.addAttribute(batteryService);
+  bleSerial.addAttribute(batteryLevelCharacteristic);
+  bleSerial.addAttribute(temperatureService);
+  bleSerial.addAttribute(temperatureCharacteristic);
+  bleSerial.addAttribute(ledService);
+  bleSerial.addAttribute(switchCharacteristic);
+  bleSerial.addAttribute(SWITCHDescriptor);
+  bleSerial.addAttribute(CalibrateCharacteristic);
+  bleSerial.addAttribute(CalibrationDescriptor);
+  bleSerial.addAttribute(ForceSensorService);
+  bleSerial.addAttribute(ForceSensorCharacteristic);
+  bleSerial.addAttribute(ForceDescriptor);
+  bleSerial.addAttribute(ForceSensorLimitCharacteristic);
+  bleSerial.addAttribute(ForceSensorLimitCharacteristic2);
+  bleSerial.addAttribute(ManualCharacteristic);
 
-  BLESerial.addAttribute(PASSService);
-  BLESerial.addAttribute(PASSCharacteristic);
-  BLESerial.addRemoteAttribute(remoteUserDataAttributeService);
-  BLESerial.addRemoteAttribute(remoteDeviceKeyCharacteristic);
+  bleSerial.addAttribute(PASSService);
+  bleSerial.addAttribute(PASSCharacteristic);
+  bleSerial.addRemoteAttribute(remoteUserDataAttributeService);
+  bleSerial.addRemoteAttribute(remoteDeviceKeyCharacteristic);
   // assign event handlers for connected, disconnected to peripheral
-  BLESerial.setEventHandler(BLEConnected, blePeripheralConnectHandler);
-  BLESerial.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
-  BLESerial.setEventHandler(BLEBonded, blePeripheralBondedHandler);
-  BLESerial.setEventHandler(BLERemoteServicesDiscovered, blePeripheralRemoteServicesDiscoveredHandler);
+  bleSerial.setEventHandler(BLEConnected, blePeripheralConnectHandler);
+  bleSerial.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
+  bleSerial.setEventHandler(BLEBonded, blePeripheralBondedHandler);
+  bleSerial.setEventHandler(BLERemoteServicesDiscovered, blePeripheralRemoteServicesDiscoveredHandler);
   remoteDeviceKeyCharacteristic.setEventHandler(BLEValueUpdated, bleRemoteDeviceNameCharacteristicValueUpdatedHandle);
   // assign event handlers for characteristic
   switchCharacteristic.setEventHandler(BLEWritten, switchCharacteristicWritten);
@@ -373,7 +373,7 @@ void setup()
   CalibrateCharacteristic.setEventHandler(BLESubscribed, SubscribedToCalibrate);
 
   // begin initialization
-  BLESerial.begin();
+  bleSerial.begin();
   
   Serial.println(F("BLE LED Peripheral"));
 
@@ -569,6 +569,7 @@ void loop()
     if (mid_reading != mid)
     {
       mid = mid_reading;
+      bleSerial.println("mid changed"+String(mid));
       //ForceSensorCharacteristic.setValueLE(mid);
     }
   }
@@ -610,7 +611,8 @@ void loop()
       key_signal_tmp = analogRead(UNLOCK_SENSOR);
       ForceSensorCharacteristic.setValueLE(key_signal_tmp);
 
-      BLESerial.println(String(key_signal_tmp));
+      //bleSerial.println(String(key_signal_tmp));
+      
 
       
 
@@ -663,6 +665,7 @@ void loop()
 
       if(read1>300 && read1<700){
         Serial.println("key_signal is valid ");
+        bleSerial.println("key_signal is valid ");
        
 
         if(startsensing){
@@ -679,6 +682,10 @@ void loop()
         Serial.println("key_signal is invalid ");
         Serial.println("read 1s: " + String(read1));
       Serial.println("read 0s: " + String(read0));
+      bleSerial.println("key_signal is invalid ");
+      bleSerial.println("read 1s: " + String(read1));
+      bleSerial.println("read 0s: " + String(read0));
+
 
         //key_signal=0;
       }
@@ -724,6 +731,7 @@ void loop()
   {
 
     Serial.println("MID is "+ String(mid)+" "+" before was: "+String(midBefore));
+    
 
     //MANUAL MID FUNCTION 
     if(midBefore!=mid){
@@ -763,13 +771,16 @@ void loop()
   if (currentMillis - previousMillis2 > ForceSensingInterval && startsensing != 0)
   {
     Serial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal) );
+    bleSerial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal) );
 
     // float sensorvoltage = getForceSensorVoltage();
     if (((key_signal==1) || timeaccum >= MAX_UNLOCKING_TIME  )  && startsensing == 1)
     {
       Serial.println("timeaccum is: " + String(timeaccum));
+      bleSerial.println("timeaccum is: " + String(timeaccum));
       //Serial.println("Locking Time is : " + String(LOCKING_TIME));
       Serial.println("key_signal is: " + String(key_signal) );
+      bleSerial.println("key_signal is: " + String(key_signal) );
 
       digitalWrite(LED_PIN, HIGH);
       digitalWrite(MOTOR_1, LOW);
@@ -784,11 +795,13 @@ void loop()
       }
       // print mid
       Serial.println("mid is: " + String(mid) + " and before is: " + String(midBefore));
+      bleSerial.println("mid is: " + String(mid) + " and before is: " + String(midBefore));
       if (midBefore == mid)
       {
         // erorr moved to little didnt even change mid sensor
         // go back only using time
         Serial.println("ERROR moved to little mid didnt change");
+        bleSerial.println("ERROR moved to little mid didnt change");
 
         state = 0;
         startsensing = 0;
@@ -812,9 +825,11 @@ void loop()
     {
 
       Serial.println("timeaccum is: " + String(timeaccum));
+      bleSerial.println("timeaccum is: " + String(timeaccum));
       //Serial.println("Unlocking Time is : " + String(UNLOCKING_TIME));
       //print key_signal
       Serial.println("key_signal is: " + String(key_signal));
+      bleSerial.println("key_signal is: " + String(key_signal));
 
       digitalWrite(LED_PIN, LOW);
       digitalWrite(MOTOR_2, LOW);
@@ -829,11 +844,13 @@ void loop()
       }
       
       Serial.println("mid is: " + String(mid) + " and before is: " + String(midBefore));
+      bleSerial.println("mid is: " + String(mid) + " and before is: " + String(midBefore));
       if (midBefore == mid)
       {
         // erorr moved to little didnt even change mid sensor
         // go back only using time
         Serial.println("ERROR moved to little mid didnt change");
+        bleSerial.println("ERROR moved to little mid didnt change");
         state = 0;
         startsensing = 0;
         goback = 7;
@@ -870,6 +887,7 @@ void loop()
       key_signal=0;
     }
     Serial.println("going back " + String(gobacktime));
+    bleSerial.println("going back " + String(gobacktime));
     // float sensorvoltage = getForceSensorVoltage();
     if (goback == 1)
     {
@@ -907,6 +925,7 @@ void loop()
     {
       CalibrateCharacteristic.setValue('33');
       Serial.println("SUCESS 3 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
+      bleSerial.println("SUCESS 3 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
       digitalWrite(MOTOR_1, LOW);
 
       gobacktime = 0;
@@ -916,6 +935,7 @@ void loop()
     {
       CalibrateCharacteristic.setValue('33');
       Serial.println("SUCESS 9 went back ONLY using time: \n");
+      bleSerial.println("SUCESS 9 went back ONLY using time: \n");
       digitalWrite(MOTOR_1, LOW);
       gobacktime = 0;
       goback = 0;
@@ -926,6 +946,7 @@ void loop()
       CalibrateCharacteristic.setValue('32');
 
       Serial.println("SUCESS 2 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
+      bleSerial.println("SUCESS 2 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
       digitalWrite(MOTOR_2, LOW);
       delay(10);
       // popravek da je senzor sredine vedno odklopljen
@@ -937,6 +958,7 @@ void loop()
 
       CalibrateCharacteristic.setValue('32');
       Serial.println("SUCESS 8 went back ONLY using time: \n");
+      bleSerial.println("SUCESS 8 went back ONLY using time: \n");
       digitalWrite(MOTOR_2, LOW);
       goback = 0;
       gobacktime = 0;
@@ -947,6 +969,7 @@ void loop()
     if (goback != 0 && gobacktime <= 0) // TODO FIX THIS
     {
       Serial.println("Error went back didnt hit mid sensor: " + String(gobacktime));
+      bleSerial.println("Error went back didnt hit mid sensor: " + String(gobacktime));
       digitalWrite(MOTOR_1, LOW);
       digitalWrite(MOTOR_2, LOW);
       if (calibrationinprogress == 0)
@@ -976,7 +999,7 @@ void loop()
     // poll peripheral
   }
 
-   BLESerial.poll();
+   bleSerial.poll();
 
 
 

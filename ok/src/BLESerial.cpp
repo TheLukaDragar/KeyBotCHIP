@@ -1,6 +1,6 @@
 #include "BLESerial.h"
 
-#define BLE_SERIAL_DEBUG
+
 
 BLESerial* BLESerial::_instance = NULL;
 
@@ -31,10 +31,11 @@ void BLESerial::begin(...) {
 
 void BLESerial::poll() {
   if (millis() < this->_flushed + 100) {
-    BLEPeripheral::poll();
+   
   } else {
     flush();
   }
+   BLEPeripheral::poll();
 }
 
 void BLESerial::end() {
