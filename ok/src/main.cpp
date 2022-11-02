@@ -36,7 +36,9 @@ extern "C"
 #define MOTOR_2 20
 #define MID_SENSOR 21
 #define DRV_SLEEP 19
-#define UNLOCK_SENSOR 3
+#define UNLOCK_SENSOR 5
+
+
 
 BLESerial bleSerial = BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
 //#define MID_SENSOR 16 // FOR TESTING ONLY key 1
@@ -74,16 +76,16 @@ float sensitivity_voltage_limit = 1.5;
 float sensitivity_voltage_limit2 = 1.5;
 long MIN_LOCKING_TIME = 1000;
 long MIN_UNLOCKING_TIME = 1000;
-long MAX_LOCKING_TIME = 7000;
-long MAX_UNLOCKING_TIME = 7000;
+long MAX_LOCKING_TIME = 15000;
+long MAX_UNLOCKING_TIME = 15000;
 long LOCKING_TIME = 1500;
 long UNLOCKING_TIME = 1500; // pazi more bit toliko da vsaj spremeni mid sensor
 int calibrationinprogress = 0;
 int calibrationstatus = 0;
 int calibdir=0;
 int manualgotomidinprogress = 0;
-long MAXGOTOMIDTIME1=4000;
-long MAXGOTOMIDTIME2=6000;
+long MAXGOTOMIDTIME1=10000;
+long MAXGOTOMIDTIME2=17000;
 uint32_t *addr;
 static uint8_t fs_callback_flag;
 long timeaccum = 0;
@@ -91,11 +93,13 @@ long timeaccum2 = 0; // interval at which to do something (milliseconds)
 int mid = 0;            // the current reading from the input pin
 int lastMidState = LOW;
 int midBeforeBack = 0;
-long MaxgObacktime = 8000;
+long MaxgObacktime = 10000;
 unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 10;
 int midBefore = 0;
 int mid_reading = 0;
+
+int keysensor_cooldown=0;
 
 
 int key_signal_begin = 0;
@@ -103,6 +107,8 @@ int key_signal = 0;
 int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
+
+ int readings[200];
 
 
 // create peripheral instance, see pinouts above
@@ -303,6 +309,7 @@ void setup()
   Serial.begin(115200);
   //BLESerial.begin();
 
+
   // set LED pin to output mode
   pinMode(LED_PIN, OUTPUT);
   pinMode(MOTOR_1, OUTPUT);
@@ -313,10 +320,11 @@ void setup()
   pinMode(DRV_SLEEP,OUTPUT);
   digitalWrite(DRV_SLEEP,LOW);
   //pinMode(PIN_A4, INPUT);
-  pinMode(MID_SENSOR, INPUT);
+  pinMode(MID_SENSOR, INPUT_PULLUP);
   //pinMode(UNLOCK_SENSOR, INPUT);
 
   pinMode(UNLOCK_SENSOR, INPUT); //A1 ANALOG
+  //MAKE analog input
 
   //digitalWrite(PIN_A4, LOW);
   // pinMode(LED_0, OUTPUT);
@@ -559,10 +567,13 @@ void loop()
       // someoneconnected=false;
     }
   }
+
+
   mid_reading = digitalRead(MID_SENSOR) ^ 1;
   if (mid_reading != lastMidState)
   {
     lastDebounceTime = millis();
+    
   }
   if ((millis() - lastDebounceTime) > debounceDelay)
   {
@@ -570,7 +581,7 @@ void loop()
     {
       mid = mid_reading;
       bleSerial.println("mid changed"+String(mid));
-      //ForceSensorCharacteristic.setValueLE(mid);
+      ForceSensorCharacteristic.setValueLE(mid);
     }
   }
   lastMidState = mid_reading;
@@ -581,6 +592,13 @@ void loop()
   if (currentMillis - previousMillis5 > key_signal_interval)
   {
     previousMillis5 = currentMillis;
+     //digitalWrite(LED_PIN, HIGH);
+   
+
+    if(keysensor_cooldown){
+      keysensor_cooldown--;
+      key_signal_interval=100;
+    }
 
       // key_signal_before=key_signal;
       // key_signal_tmp = digitalRead(UNLOCK_SENSOR);
@@ -609,7 +627,7 @@ void loop()
       
       
       key_signal_tmp = analogRead(UNLOCK_SENSOR);
-      ForceSensorCharacteristic.setValueLE(key_signal_tmp);
+     
 
       //bleSerial.println(String(key_signal_tmp));
       
@@ -618,54 +636,62 @@ void loop()
 
       if(key_signal_tmp>300 && key_signal_begin==0){
 
+        
+
         key_signal_begin=1;
-         Serial.println();
+         //Serial.println();
 
       }
       int read1 = 0;
-      int read0 = 0;
       if(key_signal_begin){
 
         //read the key_signal 200 times
 
         
+        //we read signal every 100ms and check 200 samples in ~100ms - frequency is ~2000hz
+        //car key sensor signal lasts 400ms and has frequency of 1/1ms=1000Hz
 
-        for (int i = 0; i < 1000; i++)
+       
+        for (int i = 0; i < 200; i++)
         {
+
+
           key_signal_tmp = analogRead(UNLOCK_SENSOR);
+         
+
+           //ForceSensorCharacteristic.setValueLE(key_signal_tmp);
 
           if(key_signal_tmp>300){
             read1++;
+            readings[i]=1;
           }
           else{
-            read0++;
+            readings[i]=0;
           }
           
-        
-        //format to string
-
-        //char str[] = "0"; 
-        //format wuth leading zeros
-        //sprintf(str, "%d", key_signal_tmp);
-      
-
-         Serial.print("" + String(key_signal_tmp>300));
 
          key_signal_count++;
 
+         delayMicroseconds(420);
+
          }
+        
 
       }
       if (key_signal_count>40)
      {
-      Serial.println("");
+      
+      //Serial.println("");
       
 
       //check if the number of 1s and 0s is beetwen a range of 500+/-200
 
-      if(read1>300 && read1<700){
-        Serial.println("key_signal is valid ");
+      if(read1>20 && read1<180){
+        //Serial.println("key_signal is valid ");
         bleSerial.println("key_signal is valid ");
+      //bleSerial.println("read 1s: " + String(read1));
+      //bleSerial.println("read 0s: " + String(200-read1));
+
        
 
         if(startsensing){
@@ -673,18 +699,41 @@ void loop()
 
         }
 
+        keysensor_cooldown=1;
+        key_signal_interval=2000;
+
+        //reconstruct the signal to string and send it to the phone
+        String key_signal_string="";
         
+        for (int i = 0; i < 200; i++)
+        {
+          if(readings[i]==1){
+            key_signal_string=key_signal_string+"-";
+          }
+          else{
+            key_signal_string=key_signal_string+".";
+          }
+          
+        }
+        //print first 100
+        bleSerial.println( key_signal_string.substring(0,100));
+        
+        //print last 100
+        //bleSerial.println(key_signal_string.substring(100,200));
+
         
        
       }
       else{
         //sensor lost his mind
-        Serial.println("key_signal is invalid ");
-        Serial.println("read 1s: " + String(read1));
-      Serial.println("read 0s: " + String(read0));
-      bleSerial.println("key_signal is invalid ");
-      bleSerial.println("read 1s: " + String(read1));
-      bleSerial.println("read 0s: " + String(read0));
+        //Serial.println("key_signal is invalid ");
+        //Serial.println("read 1s: " + String(read1));
+      //Serial.println("read 0s: " + String(1000-read1));
+      //bleSerial.println("key_signal is invalid "+String(read1));
+      
+      //bleSerial.println("read 1s: " + String(read1));
+      //bleSerial.println("read 0s: " + String(200-read1));
+
 
 
         //key_signal=0;
@@ -692,11 +741,24 @@ void loop()
 
       key_signal_begin=0;
       key_signal_count=0;
-      read0=0;
       read1=0;
 
 
      }
+
+     //delay(1);
+
+     
+     
+
+
+      memset(readings, 0, sizeof(readings));
+
+      //clear readings array using memset
+        //digitalWrite(LED_PIN, LOW);
+
+    
+      
 
     
       
@@ -731,7 +793,9 @@ void loop()
   {
 
     Serial.println("MID is "+ String(mid)+" "+" before was: "+String(midBefore));
-    
+    bleSerial.println("MID is "+ String(mid)+" "+" before was: "+String(midBefore));
+
+
 
     //MANUAL MID FUNCTION 
     if(midBefore!=mid){
@@ -887,7 +951,13 @@ void loop()
       key_signal=0;
     }
     Serial.println("going back " + String(gobacktime));
-    bleSerial.println("going back " + String(gobacktime));
+
+    //only print if divided by 1000
+    if (gobacktime % 1000 == 0)
+    {
+       bleSerial.println("going back " + String(gobacktime));
+    }
+   
     // float sensorvoltage = getForceSensorVoltage();
     if (goback == 1)
     {
@@ -951,6 +1021,7 @@ void loop()
       delay(10);
       // popravek da je senzor sredine vedno odklopljen
       digitalWrite(MOTOR_1, HIGH);
+      gobacktime+=2000;
       goback = 5;
     }
     if (goback == 8 && gobacktime <= 0)
