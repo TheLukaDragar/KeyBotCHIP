@@ -37,10 +37,11 @@ extern "C"
 #define MID_SENSOR 21
 #define DRV_SLEEP 19
 #define UNLOCK_SENSOR 5
+#define DEBUG_FFT 16
+#define POWER_MAIN 6
 
 #define ARM_MATH_CM0
 #include "arm_math.h"
-
 
 BLESerial bleSerial = BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
 
@@ -53,31 +54,28 @@ BLESerial bleSerial = BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
 #include "arm_const_structs.h"
 /*lint -restore */
 
-#define GRAPH_WINDOW_HEIGHT              20                              //!< Graph window height used in draw function.
+#define GRAPH_WINDOW_HEIGHT 10 //!< Graph window height used in draw function.
 
-#define FPU_EXCEPTION_MASK               0x0000009F                      //!< FPU exception mask used to clear exceptions in FPSCR register.
-#define FPU_FPSCR_REG_STACK_OFF          0x40                            //!< Offset of FPSCR register stacked during interrupt handling in FPU part stack.
+#define FPU_EXCEPTION_MASK 0x0000009F //!< FPU exception mask used to clear exceptions in FPSCR register.
+#define FPU_FPSCR_REG_STACK_OFF 0x40  //!< Offset of FPSCR register stacked during interrupt handling in FPU part stack.
 
 // We want to use 44100 Hz sampling rate to reach 22050Hz band. 128 (64 pairs) samples are used
 // in FFT calculation with result contains 64 bins (22050Hz/64bins -> ~344,5Hz per bin).
-#define FFT_TEST_SAMPLE_FREQ_HZ          2200.0f                        //!< Frequency of complex input samples.
-#define FFT_TEST_COMP_SAMPLES_LEN        256                            //!< Complex numbers input data array size. Correspond to FFT calculation this number must be power of two starting from 2^5 (2^4 pairs) with maximum value 2^13 (2^12 pairs).
-#define FFT_TEST_OUT_SAMPLES_LEN         (FFT_TEST_COMP_SAMPLES_LEN / 2) //!< Output array size.
+#define FFT_TEST_SAMPLE_FREQ_HZ 2200.0f                          //!< Frequency of complex input samples.
+#define FFT_TEST_COMP_SAMPLES_LEN 256                            //!< Complex numbers input data array size. Correspond to FFT calculation this number must be power of two starting from 2^5 (2^4 pairs) with maximum value 2^13 (2^12 pairs).
+#define FFT_TEST_OUT_SAMPLES_LEN (FFT_TEST_COMP_SAMPLES_LEN / 2) //!< Output array size.
 
-#define SIGNALS_RESOLUTION               100.0f                          //!< Sine wave frequency and noise amplitude resolution. To count resolution as decimal places in number use this formula: resolution = 1/SIGNALS_RESOLUTION .
-#define SINE_WAVE_FREQ_MAX               1000                           //!< Maximum frequency of generated sine wave.
-#define NOISE_AMPLITUDE                  1                               //!< Amplitude of generated noise added to signal.
+#define SIGNALS_RESOLUTION 100.0f //!< Sine wave frequency and noise amplitude resolution. To count resolution as decimal places in number use this formula: resolution = 1/SIGNALS_RESOLUTION .
+#define SINE_WAVE_FREQ_MAX 1000   //!< Maximum frequency of generated sine wave.
+#define NOISE_AMPLITUDE 1         //!< Amplitude of generated noise added to signal.
 
-static uint32_t  m_ifft_flag             = 0;                            //!< Flag that selects forward (0) or inverse (1) transform.
-static uint32_t  m_do_bit_reverse        = 1;                            //!< Flag that enables (1) or disables (0) bit reversal of output.
-static float32_t m_fft_input_f64[FFT_TEST_COMP_SAMPLES_LEN];             //!< FFT input array. Time domain.
-static float32_t m_fft_output_f64[FFT_TEST_OUT_SAMPLES_LEN];             //!< FFT output data. Frequency domain.
-
-
+static uint32_t m_ifft_flag = 0;                             //!< Flag that selects forward (0) or inverse (1) transform.
+static uint32_t m_do_bit_reverse = 1;                        //!< Flag that enables (1) or disables (0) bit reversal of output.
+static float32_t m_fft_input_f64[FFT_TEST_COMP_SAMPLES_LEN]; //!< FFT input array. Time domain.
+static float32_t m_fft_output_f64[FFT_TEST_OUT_SAMPLES_LEN]; //!< FFT output data. Frequency domain.
 
 bool noise = false;
 float32_t sine_freq;
-
 
 //#define MID_SENSOR 16 // FOR TESTING ONLY key 1
 //#define ANALOG_IN_PIN 6
@@ -117,15 +115,15 @@ long LOCKING_TIME = 1500;
 long UNLOCKING_TIME = 1500; // pazi more bit toliko da vsaj spremeni mid sensor
 int calibrationinprogress = 0;
 int calibrationstatus = 0;
-int calibdir=0;
+int calibdir = 0;
 int manualgotomidinprogress = 0;
-long MAXGOTOMIDTIME1=10000;
-long MAXGOTOMIDTIME2=17000;
+long MAXGOTOMIDTIME1 = 10000;
+long MAXGOTOMIDTIME2 = 17000;
 uint32_t *addr;
 static uint8_t fs_callback_flag;
 long timeaccum = 0;
 long timeaccum2 = 0; // interval at which to do something (milliseconds)
-int mid = 0;            // the current reading from the input pin
+int mid = 0;         // the current reading from the input pin
 int lastMidState = LOW;
 int midBeforeBack = 0;
 long MaxgObacktime = 10000;
@@ -134,8 +132,7 @@ unsigned long debounceDelay = 10;
 int midBefore = 0;
 int mid_reading = 0;
 
-int keysensor_cooldown=0;
-
+int keysensor_cooldown = 0;
 
 int key_signal_begin = 0;
 int key_signal = 0;
@@ -143,11 +140,10 @@ int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
 
-//int readings[200];
-
+// int readings[200];
 
 // create peripheral instance, see pinouts above
-//BLEPeripheral blePeripheral = BLEPeripheral(BLE_REQ, BLE_RDY, BLE_RST);
+// BLEPeripheral blePeripheral = BLEPeripheral(BLE_REQ, BLE_RDY, BLE_RST);
 // BLEBondStore bleBondStore;
 //  create service
 BLEService ledService = BLEService("00001815-0000-1000-8000-00805F9B34FB");
@@ -205,80 +201,73 @@ float getForceSensorVoltage();
  * @param[in] sine_freq   Sine wave frequency.
  * @param[in] add_noise   Flag for enable or disble adding noise for generated data.
  */
-static void fft_generate_samples(float32_t * p_input,
-                                 uint16_t    size,
-                                 float32_t   sampling_freq,
-                                 float32_t   sine_freq,
-                                 bool        add_noise)
+static void fft_generate_samples(float32_t *p_input,
+                                 uint16_t size,
+                                 float32_t sampling_freq,
+                                 float32_t sine_freq,
+                                 bool add_noise)
 {
-    uint32_t i;
+  uint32_t i;
 
-    /* Remember that sample is represented as two next values in array. */
-    uint32_t sample_idx = 0;
+  /* Remember that sample is represented as two next values in array. */
+  uint32_t sample_idx = 0;
 
-    if (2 > size)
+  if (2 > size)
+  {
+    return;
+  }
+
+  for (i = 0; i < (size - 1UL); i += 2)
+  {
+    sample_idx = i / 2;
+    // Real part.
+    p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
+    if (add_noise)
     {
-        return;
+      // Noise can be positive or negative number. Numbers can be cast to signed values.
+      p_input[(uint16_t)i] *= ((rand()) % ((int)(NOISE_AMPLITUDE * SIGNALS_RESOLUTION))) / SIGNALS_RESOLUTION;
     }
-
-    for (i = 0; i < (size - 1UL); i += 2) {
-        sample_idx = i / 2;
-        // Real part.
-        p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
-        if (add_noise)
-        {
-            // Noise can be positive or negative number. Numbers can be cast to signed values.
-            p_input[(uint16_t)i] *= ((rand()) % ((int)(NOISE_AMPLITUDE * SIGNALS_RESOLUTION)))
-                                    / SIGNALS_RESOLUTION;
-        }
-        // Img part.
-        p_input[(uint16_t)i + 1] = 0;
-    }
+    // Img part.
+    p_input[(uint16_t)i + 1] = 0;
+  }
 }
 
-static void fft_generate_samples_square(float32_t * p_input,
-                                 uint16_t    size,
-                                 float32_t   sampling_freq,
-                                 float32_t   sine_freq,
-                                 bool        add_noise)
+static void fft_generate_samples_square(float32_t *p_input,
+                                        uint16_t size,
+                                        float32_t sampling_freq,
+                                        float32_t sine_freq,
+                                        bool add_noise)
 {
-    uint32_t i;
+  uint32_t i;
 
-    /* Remember that sample is represented as two next values in array. */
-    uint32_t sample_idx = 0;
+  /* Remember that sample is represented as two next values in array. */
+  uint32_t sample_idx = 0;
 
-    if (2 > size)
+  if (2 > size)
+  {
+    return;
+  }
+
+  for (i = 0; i < (size - 1UL); i += 2)
+  {
+    sample_idx = i / 2;
+    // Real part.
+    p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
+
+    // make square wave
+    if (p_input[(uint16_t)i] > 0)
     {
-        return;
+      p_input[(uint16_t)i] = 1.0;
+    }
+    else
+    {
+      p_input[(uint16_t)i] = 0.0;
     }
 
-  
-
-    for (i = 0; i < (size - 1UL); i += 2) {
-        sample_idx = i / 2;
-        // Real part.
-        p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
-
-        //make square wave
-        if (p_input[(uint16_t)i] > 0)
-        {
-          p_input[(uint16_t)i] = 1.0;
-        }
-        else
-        {
-          p_input[(uint16_t)i] = 0.0;
-        }
-        
-        // Img part.
-        p_input[(uint16_t)i + 1] = 0;
-    }
-
-
-
-
+    // Img part.
+    p_input[(uint16_t)i + 1] = 0;
+  }
 }
-
-
 
 /**
  * @brief Function for processing generated sine wave samples.
@@ -287,30 +276,30 @@ static void fft_generate_samples_square(float32_t * p_input,
  * @param[out] p_output      Pointer to processed data (bins) array in frequency domain.
  * @param[in] output_size    Processed data array size.
  */
-static void fft_process(float32_t *                   p_input,
-                        const arm_cfft_instance_f32 * p_input_struct,
-                        float32_t *                   p_output,
-                        uint16_t                      output_size)
+static void fft_process(float32_t *p_input,
+                        const arm_cfft_instance_f32 *p_input_struct,
+                        float32_t *p_output,
+                        uint16_t output_size)
 {
-    // Use CFFT module to process the data.
-    arm_cfft_f32(p_input_struct, p_input, m_ifft_flag, m_do_bit_reverse);
-    // Calculate the magnitude at each bin using Complex Magnitude Module function.
-    arm_cmplx_mag_f32(p_input, p_output, output_size);
+  // Use CFFT module to process the data.
+  arm_cfft_f32(p_input_struct, p_input, m_ifft_flag, m_do_bit_reverse);
+  // Calculate the magnitude at each bin using Complex Magnitude Module function.
+  arm_cmplx_mag_f32(p_input, p_output, output_size);
 }
 
 static void draw_line(uint16_t line_width)
 {
-    uint32_t i;
-    char     line[line_width + 1];
+  uint32_t i;
+  char line[line_width + 1];
 
-    for (i = 0; i < line_width; i++)
-    {
-        line[i] = '-';
-    }
-    line[line_width] = 0;
-    //"%s\r\n", tmp_str
-    String tmp_str = String(line)+String("\r\n");
-    bleSerial.print(tmp_str);
+  for (i = 0; i < line_width; i++)
+  {
+    line[i] = '-';
+  }
+  line[line_width] = 0;
+  //"%s\r\n", tmp_str
+  String tmp_str = String(line) + String("\r\n");
+  bleSerial.print(tmp_str);
 }
 
 /**
@@ -322,9 +311,9 @@ static void draw_line(uint16_t line_width)
 static void draw_fft_header(float32_t input_sine_freq, bool is_noisy)
 {
 
-    String str = "In " + String((uint16_t)input_sine_freq) + "Hz";
+  String str = "Input " + String((uint16_t)input_sine_freq) + "Hz";
 
-    bleSerial.println(str);
+  Serial.println(str);
 }
 
 /**
@@ -333,48 +322,47 @@ static void draw_fft_header(float32_t input_sine_freq, bool is_noisy)
  * @param[in] data_size    FFT array size.
  * @param[in] chart_height Drawing chart height.
  */
-static void draw_fft_data(float32_t * p_input_data, uint16_t data_size, uint16_t chart_height)
+static void draw_fft_data(float32_t *p_input_data, uint16_t data_size, uint16_t chart_height)
 {
-    uint32_t  graph_y, graph_x;
-    float32_t curr_drawing_val;
-    float32_t curr_percent;
-    float32_t max_value;
-    uint32_t  max_val_index;
-    char      tmp_str[data_size + 1];
+  uint32_t graph_y, graph_x;
+  float32_t curr_drawing_val;
+  float32_t curr_percent;
+  float32_t max_value;
+  uint32_t max_val_index;
+  char tmp_str[data_size + 1];
 
-    // Search FFT max value in input array.
-    arm_max_f32(p_input_data, data_size, &max_value, &max_val_index);
+  // Search FFT max value in input array.
+  arm_max_f32(p_input_data, data_size, &max_value, &max_val_index);
 
-    //print max value
-    String str = "Max value: " + String(max_value) + " at index: " + String(max_val_index) + "max index:"+
-    String(data_size)+"\r\n";
-    bleSerial.print(str);
+  // print max value
+  // String str = "Max value: " + String(max_value) + " at index: " + String(max_val_index) + "max index:" +
+  //              String(data_size) + "\r\n";
+  // Serial.println(str);
 
-    // Draw graph. Put space if number is less than currently processed, put '|' character otherwise.
-    for (graph_y = chart_height; graph_y > 0; graph_y--)
+  // Draw graph. Put space if number is less than currently processed, put '|' character otherwise.
+  for (graph_y = chart_height; graph_y > 0; graph_y--)
+  {
+    curr_percent = ((graph_y - 1) / (chart_height * 1.f));
+    curr_drawing_val = max_value * curr_percent;
+    for (graph_x = 0; graph_x < data_size; graph_x++)
     {
-        curr_percent = ((graph_y - 1) / (chart_height * 1.f));
-        curr_drawing_val = max_value * curr_percent;
-        for (graph_x = 0; graph_x < data_size; graph_x++)
-        {
-            if (m_fft_output_f64[graph_x] > curr_drawing_val)
-            {
-                tmp_str[graph_x] = '|';
-            } else
-            {
-                tmp_str[graph_x] = ' ';
-            }
-        }
-        tmp_str[data_size] = 0;
-        //bleSerial.println(tmp_str);
-
-
+      if (m_fft_output_f64[graph_x] > curr_drawing_val)
+      {
+        tmp_str[graph_x] = '|';
+      }
+      else
+      {
+        tmp_str[graph_x] = ' ';
+      }
     }
+    tmp_str[data_size] = 0;
+    Serial.println(tmp_str);
+     //bleSerial.println(tmp_str);
+  }
 
-    //print out all the bins
-    
+  // print out all the bins
 
-    //draw_line(data_size);
+  // draw_line(data_size);
 }
 /** @brief Function for erasing a page in flash.
  *
@@ -525,29 +513,30 @@ void *w2(uint32_t a)
 void setup()
 {
   Serial.begin(115200);
-  //BLESerial.begin();
-
+  // BLESerial.begin();
 
   // set LED pin to output mode
   pinMode(LED_PIN, OUTPUT);
+  pinMode(DEBUG_FFT, OUTPUT);
+  pinMode(POWER_MAIN, INPUT);
   pinMode(MOTOR_1, OUTPUT);
-  digitalWrite(MOTOR_1,LOW);
+  digitalWrite(MOTOR_1, LOW);
   pinMode(MOTOR_2, OUTPUT);
-  digitalWrite(MOTOR_2,LOW);
+  digitalWrite(MOTOR_2, LOW);
 
-  pinMode(DRV_SLEEP,OUTPUT);
-  digitalWrite(DRV_SLEEP,LOW);
-  //pinMode(PIN_A4, INPUT);
+  pinMode(DRV_SLEEP, OUTPUT);
+  digitalWrite(DRV_SLEEP, LOW);
+  // pinMode(PIN_A4, INPUT);
   pinMode(MID_SENSOR, INPUT_PULLUP);
-  //pinMode(UNLOCK_SENSOR, INPUT);
+  // pinMode(UNLOCK_SENSOR, INPUT);
 
-  pinMode(UNLOCK_SENSOR, INPUT); //A1 ANALOG
-  //MAKE analog input
+  pinMode(UNLOCK_SENSOR, INPUT); // A1 ANALOG
+  // MAKE analog input
 
-  //digitalWrite(PIN_A4, LOW);
-  // pinMode(LED_0, OUTPUT);
-  // pinMode(LED_1, OUTPUT);
-  // pinMode(LED_2, OUTPUT);
+  // digitalWrite(PIN_A4, LOW);
+  //  pinMode(LED_0, OUTPUT);
+  //  pinMode(LED_1, OUTPUT);
+  //  pinMode(LED_2, OUTPUT);
   /*
     pinMode(KEY1_PIN,INPUT);
     pinMode(PIN_A1,OUTPUT);
@@ -593,16 +582,15 @@ void setup()
   ForceSensorLimitCharacteristic.setEventHandler(BLEWritten, ForceSettingWritten);
   ForceSensorLimitCharacteristic2.setEventHandler(BLEWritten, ForceSettingWritten2);
   ManualCharacteristic.setEventHandler(BLEWritten, ManualWritten);
-  ManualCharacteristic.setEventHandler(BLESubscribed,SubscribedToManual);
+  ManualCharacteristic.setEventHandler(BLESubscribed, SubscribedToManual);
 
   CalibrateCharacteristic.setEventHandler(BLEWritten, CalibrateWritten);
   CalibrateCharacteristic.setEventHandler(BLESubscribed, SubscribedToCalibrate);
 
   // begin initialization
   bleSerial.begin();
-  
-  Serial.println(F("BLE LED Peripheral"));
 
+  Serial.println(F("BLE LED Peripheral"));
 
   blinkLed(1, 1000);
   state = 0;
@@ -748,16 +736,11 @@ printf("Flashwrite example\n\r");
   }
   while (i < pg_size);
   */
-
- 
-
-    
-
- 
 }
 void loop()
 {
 
+  
 
   uint32_t err_code;
   if (true)
@@ -792,19 +775,17 @@ void loop()
     }
   }
 
-
   mid_reading = digitalRead(MID_SENSOR) ^ 1;
   if (mid_reading != lastMidState)
   {
     lastDebounceTime = millis();
-    
   }
   if ((millis() - lastDebounceTime) > debounceDelay)
   {
     if (mid_reading != mid)
     {
       mid = mid_reading;
-      bleSerial.println("mid changed"+String(mid));
+      bleSerial.println("mid changed" + String(mid));
       ForceSensorCharacteristic.setValueLE(mid);
     }
   }
@@ -816,219 +797,206 @@ void loop()
   if (currentMillis - previousMillis5 > key_signal_interval)
   {
     previousMillis5 = currentMillis;
-     //digitalWrite(LED_PIN, HIGH);
+    digitalWrite(DEBUG_FFT, LOW);
 
-    
-   
+    //int mainBatteryLevel = analogRead(POWER_MAIN);
+  //scale to 0-100
+  //bleSerial.println("Main battery level: " + String(mainBatteryLevel) + "%");
 
-    if(keysensor_cooldown){
+    if (keysensor_cooldown)
+    {
       keysensor_cooldown--;
-      key_signal_interval=100;
+      key_signal_interval = 100;
     }
 
-      // key_signal_before=key_signal;
-      // key_signal_tmp = digitalRead(UNLOCK_SENSOR);
-      
-      // if(key_signal_tmp==1)
-      // {
-      //   key_signal_count++;
+    // key_signal_before=key_signal;
+    // key_signal_tmp = digitalRead(UNLOCK_SENSOR);
 
-      //   Serial.println("key_signal_count is: " + String(key_signal_count));
-      // }
-      // else
-      // {
-      //   key_signal_count=0;
-      // }
-      // if(key_signal_count>3)
-      // {
-      //   key_signal=1;
-      // }
-      // else
-      // {
-      //   key_signal=0;
-      // }
+    // if(key_signal_tmp==1)
+    // {
+    //   key_signal_count++;
 
-      
+    //   Serial.println("key_signal_count is: " + String(key_signal_count));
+    // }
+    // else
+    // {
+    //   key_signal_count=0;
+    // }
+    // if(key_signal_count>3)
+    // {
+    //   key_signal=1;
+    // }
+    // else
+    // {
+    //   key_signal=0;
+    // }
+    // key_signal_tmp=0;
 
-      
-      
-      key_signal_tmp = analogRead(UNLOCK_SENSOR);
-     
+    // key_signal_tmp = analogRead(UNLOCK_SENSOR);
 
-      //bleSerial.println(String(key_signal_tmp));
-      
+    // bleSerial.println(String(key_signal_tmp));
 
-      
+    // if(key_signal_tmp>300 && key_signal_begin==0){
 
-      if(key_signal_tmp>300 && key_signal_begin==0){
+    // key_signal_begin=1;
+    // Serial.println();
 
-        
+    // }
+    int read1 = 0;
+    if (true)
+    {
 
-        key_signal_begin=1;
-         //Serial.println();
+      // read the key_signal 200 times
 
-      }
-      int read1 = 0;
-      if(key_signal_begin){
+      // we read signal every 100ms and check 200 samples in ~100ms - frequency is ~2000hz
+      // car key sensor signal lasts 400ms and has frequency of 1/1ms=1000Hz
 
-        //read the key_signal 200 times
+      unsigned long begin = millis();
+      digitalWrite(DEBUG_FFT, HIGH);
+      for (int i = 0; i < (256 - 1UL); i += 2)
+      {
 
-        
-        //we read signal every 100ms and check 200 samples in ~100ms - frequency is ~2000hz
-        //car key sensor signal lasts 400ms and has frequency of 1/1ms=1000Hz
+        key_signal_tmp = analogRead(UNLOCK_SENSOR);
 
-        
+        m_fft_input_f64[(uint16_t)i] = (float32_t)key_signal_tmp > 300 ? 1.0 : 0.0;
+        m_fft_input_f64[(uint16_t)i + 1] = 0.0;
 
-       
-        for (int i = 0; i < 200; i++)
+        if (key_signal_tmp > 300)
         {
-
-
-          key_signal_tmp = analogRead(UNLOCK_SENSOR);
-         
-
-           //ForceSensorCharacteristic.setValueLE(key_signal_tmp);
-
-          if(key_signal_tmp>300){
-            read1++;
-            //readings[i]=1;
-          }
-          else{
-            //readings[i]=0;
-          }
-          
-
-         key_signal_count++;
-
-         delayMicroseconds(420);
-
-         }
-        
-
-      }
-      if (key_signal_count>40)
-     {
-
-       
-        // Sine wave frequency must be positive number so cast rand to unsigned number.
-        // stdlib using with Segger Embedded Studio uses rand() configured to return values up to
-        // 32767 instead of 0x7fffffff configured in other compilers. It causes that generated sine
-        // frequency is smaller, but example works in the same way.
-        
-      
-      //Serial.println("");
-      
-
-      //check if the number of 1s and 0s is beetwen a range of 500+/-200
-
-      if(read1>20 && read1<180){
-        //Serial.println("key_signal is valid ");
-        //bleSerial.println("key_signal is valid ");
-      //bleSerial.println("read 1s: " + String(read1));
-      //bleSerial.println("read 0s: " + String(200-read1));
-
-       
-
-        if(startsensing){
-           key_signal=1;
-
+          read1++;
         }
 
-        keysensor_cooldown=1;
-        key_signal_interval=1000;
+        // delay to match the sampling frequency which is 1200Hz aka  1/1200=0.0008333s and take program execution time into account
 
-        //reconstruct the signal to string and send it to the phone
-        String key_signal_string="";
-        
-        // for (int i = 0; i < 200; i++)
-        // {
-        //   if(readings[i]==1){
-        //     key_signal_string=key_signal_string+"-";
-        //   }
-        //   else{
-        //     key_signal_string=key_signal_string+".";
-        //   }
-          
-        // }
-        //print first 100
-        //bleSerial.println( key_signal_string.substring(0,100));
-        
-        //print last 100
-        //bleSerial.println(key_signal_string.substring(100,200));
-
-        
-       
-      }
-      else{
-        //sensor lost his mind
-        //Serial.println("key_signal is invalid ");
-        //Serial.println("read 1s: " + String(read1));
-      //Serial.println("read 0s: " + String(1000-read1));
-      //bleSerial.println("key_signal is invalid "+String(read1));
-      
-      //bleSerial.println("read 1s: " + String(read1));
-      //bleSerial.println("read 0s: " + String(200-read1));
-
-
-
-        //key_signal=0;
+        delayMicroseconds(360);
       }
 
-      key_signal_begin=0;
-      key_signal_count=0;
-      read1=0;
+      digitalWrite(DEBUG_FFT, LOW);
 
+      // get millis
 
-     }
+      unsigned long end = millis();
 
-     //delay(1);
+      // calculate time difference
 
-     
-     
+      unsigned long time = end - begin;
 
+      // calculate frequency
 
-     // memset(readings, 0, sizeof(readings));
+      float frequency = 128.0 / time;
 
-      //clear readings array using memset
-        //digitalWrite(LED_PIN, LOW);
+      // print
 
-        sine_freq = 1000;
-        fft_generate_samples(m_fft_input_f64,
-                             FFT_TEST_COMP_SAMPLES_LEN,
-                             FFT_TEST_SAMPLE_FREQ_HZ,
-                             sine_freq, false);
+      // Serial.println("Frequency: " + String(frequency) + " Hz");
+      // bleSerial.println("Frequency of sampling: " + String(frequency) + " Hz");
 
-        // Process generated data. 64 pairs of complex data (real, img). It is important to use
-        // proper arm_cfft_sR_f32 structure associated with input/output data length.
-        // For example:
-        //  - 128 numbers in input array (64 complex pairs of samples) -> 64 output bins power data -> &arm_cfft_sR_f32_len64.
-        //  - 256 numbers in input array (128 complex pairs of samples) -> 128 output bins power data -> &arm_cfft_sR_f32_len128.
+      // Serial.println("Time: " + String(time) + " ms");
+      // bleSerial.println("Time: " + String(time) + " ms");
+
+      bool ok = false;
+      if (read1 > (FFT_TEST_OUT_SAMPLES_LEN / 2) - 20 && read1 < (FFT_TEST_OUT_SAMPLES_LEN / 2) + 20)
+      {
+        ok = true;
+      }
+
+      if (ok)
+      {
+
         fft_process(m_fft_input_f64,
                     &arm_cfft_sR_f32_len128,
                     m_fft_output_f64,
                     FFT_TEST_OUT_SAMPLES_LEN);
 
         // Draw FFT bin power chart.
-        draw_fft_header(sine_freq, noise);
-        //delete the first 2 bins
+        // draw_fft_header(sine_freq, noise);
+        // delete the first 2 bins
 
-        m_fft_output_f64[0]=0;
-        m_fft_output_f64[1]=0;
+        m_fft_output_f64[0] = 0;
+        // m_fft_output_f64[1]=0;
+
+        // array is symmetrical so we can delete the second half
+
+        // for (int i = 0; i < (FFT_TEST_OUT_SAMPLES_LEN / 2); i ++)
+        // {
+        //   //m_fft_output_f64[(uint16_t)i + 1] = 0.0;
+        // }
+        // calsculate the frequency of the highest bin
+
+        float32_t max_value;
+        uint32_t max_val_index;
+
+        //only keep positive frequencies
+
+        arm_max_f32(&m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2, &max_value, &max_val_index);
 
 
-        draw_fft_data(m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN, GRAPH_WINDOW_HEIGHT);
 
-        delay(4000);
+        float32_t frequency_of_max_bin = (float32_t)max_val_index * (float32_t)frequency * 1000.0 / (float32_t)FFT_TEST_OUT_SAMPLES_LEN;
 
+        // Serial.println("Frequency of max bin: " + String(frequency_of_max_bin) + " Hz");
+
+        // check if signal is in range of car key signal 1000Hz and 500Hz signal and that it has an eqal amount of 1s and 0s
+
+        // count 1s
+
+        // check if number of 1s is between FFT_TEST_OUT_SAMPLES_LEN/2 +- 20
+
+        if ((frequency_of_max_bin > 900 && frequency_of_max_bin < 1100 || frequency_of_max_bin > 400 && frequency_of_max_bin < 600))
+
+        {
+          // led on
+
+          digitalWrite(DEBUG_FFT, HIGH);
+          if (startsensing)
+          {
+            key_signal = 1;
+          }
+          bleSerial.println("VALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
+          //print index of max bin and value
+          bleSerial.println("index of max bin: " + String(max_val_index) + " value: " + String(max_value));
+          keysensor_cooldown = 1;
+          key_signal_interval = 1000;
+        }
+        else
+        {
+          // led of
+          bleSerial.println("INVALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
+           bleSerial.println("index of max bin: " + String(max_val_index) + " value: " + String(max_value));
+        }
+        //draw_fft_data(m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN, GRAPH_WINDOW_HEIGHT);
+      }
+
+      // key_signal_begin=0;
+
+       
+    }
     
-      
 
-    
-      
-      
-     
-  }
-  
+      key_signal_begin = 0;
+      key_signal_count = 0;
+      read1 = 0;
+    }
+
+    // delay(1);
+
+    // memset(readings, 0, sizeof(readings));
+
+    // clear readings array using memset
+    // digitalWrite(LED_PIN, LOW);
+
+    // sine_freq = 1000;
+    //  fft_generate_samples(m_fft_input_f64,
+    //                       FFT_TEST_COMP_SAMPLES_LEN,
+    //                       FFT_TEST_SAMPLE_FREQ_HZ,
+    //                       sine_freq, false);
+
+    // Process generated data. 64 pairs of complex data (real, img). It is important to use
+    // proper arm_cfft_sR_f32 structure associated with input/output data length.
+    // For example:
+    //  - 128 numbers in input array (64 complex pairs of samples) -> 64 output bins power data -> &arm_cfft_sR_f32_len64.
+    //  - 256 numbers in input array (128 complex pairs of samples) -> 128 output bins power data -> &arm_cfft_sR_f32_len128.
+
+    // delay(4000);
   
 
   // unlock_reading = digitalRead(UNLOCK_SENSOR);
@@ -1049,75 +1017,70 @@ void loop()
   // }
   // lastUnlockState = unlock_reading;
 
-
-
-
-   if (currentMillis - previousMillis2 > ForceSensingInterval && manualgotomidinprogress != 0)
+  if (currentMillis - previousMillis2 > ForceSensingInterval && manualgotomidinprogress != 0)
   {
 
-    Serial.println("MID is "+ String(mid)+" "+" before was: "+String(midBefore));
-    bleSerial.println("MID is "+ String(mid)+" "+" before was: "+String(midBefore));
+    Serial.println("MID is " + String(mid) + " " + " before was: " + String(midBefore));
+    bleSerial.println("MID is " + String(mid) + " " + " before was: " + String(midBefore));
 
-
-
-    //MANUAL MID FUNCTION 
-    if(midBefore!=mid){
-      //sucess found mid 
-       digitalWrite(MOTOR_1, LOW);
+    // MANUAL MID FUNCTION
+    if (midBefore != mid)
+    {
+      // sucess found mid
+      digitalWrite(MOTOR_1, LOW);
       digitalWrite(MOTOR_2, LOW);
-       manualgotomidinprogress=0;
+      manualgotomidinprogress = 0;
       ManualCharacteristic.setValue(3);
-      timeaccum2=0;
+      timeaccum2 = 0;
     }
 
-    if(timeaccum2 >= MAXGOTOMIDTIME1 && manualgotomidinprogress==1){
-      //reverse direction
-       digitalWrite(MOTOR_1, LOW);
-       delay(100);
-       digitalWrite(MOTOR_2, HIGH);
-       manualgotomidinprogress=2;
-       timeaccum2=0;
-
-
+    if (timeaccum2 >= MAXGOTOMIDTIME1 && manualgotomidinprogress == 1)
+    {
+      // reverse direction
+      digitalWrite(MOTOR_1, LOW);
+      delay(100);
+      digitalWrite(MOTOR_2, HIGH);
+      manualgotomidinprogress = 2;
+      timeaccum2 = 0;
     }
-    if(timeaccum2 >= MAXGOTOMIDTIME2 && manualgotomidinprogress==2){
-      //reverse direction
-       digitalWrite(MOTOR_2, LOW);
-       //ERROR FINDING MID
-       ManualCharacteristic.setValue(4);
-       manualgotomidinprogress=0;
-       timeaccum2=0;
+    if (timeaccum2 >= MAXGOTOMIDTIME2 && manualgotomidinprogress == 2)
+    {
+      // reverse direction
+      digitalWrite(MOTOR_2, LOW);
+      // ERROR FINDING MID
+      ManualCharacteristic.setValue(4);
+      manualgotomidinprogress = 0;
+      timeaccum2 = 0;
     }
 
-    timeaccum2+=ForceSensingInterval;
-    previousMillis2=currentMillis;
-
+    timeaccum2 += ForceSensingInterval;
+    previousMillis2 = currentMillis;
   }
 
   // press and stop
   if (currentMillis - previousMillis2 > ForceSensingInterval && startsensing != 0)
   {
-    Serial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal) );
-    bleSerial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal) );
+    //Serial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal));
+    //bleSerial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal));
 
     // float sensorvoltage = getForceSensorVoltage();
-    if (((key_signal==1) || timeaccum >= MAX_UNLOCKING_TIME  )  && startsensing == 1)
+    if (((key_signal == 1) || timeaccum >= MAX_UNLOCKING_TIME) && startsensing == 1)
     {
       Serial.println("timeaccum is: " + String(timeaccum));
       bleSerial.println("timeaccum is: " + String(timeaccum));
-      //Serial.println("Locking Time is : " + String(LOCKING_TIME));
-      Serial.println("key_signal is: " + String(key_signal) );
-      bleSerial.println("key_signal is: " + String(key_signal) );
+      // Serial.println("Locking Time is : " + String(LOCKING_TIME));
+      Serial.println("key_signal is: " + String(key_signal));
+      bleSerial.println("key_signal is: " + String(key_signal));
 
       digitalWrite(LED_PIN, HIGH);
       digitalWrite(MOTOR_1, LOW);
-      if (key_signal==1 && timeaccum < MAX_UNLOCKING_TIME)
+      if (key_signal == 1 && timeaccum < MAX_UNLOCKING_TIME)
       {
         switchCharacteristic.setValue('32');
       }
       else
       {
-        //error unlocking
+        // error unlocking
         switchCharacteristic.setValue('34');
       }
       // print mid
@@ -1148,28 +1111,28 @@ void loop()
         midBeforeBack = mid;
       }
     }
-    if ((( key_signal==1) || timeaccum >= MAX_LOCKING_TIME  ) && startsensing == 2)
+    if (((key_signal == 1) || timeaccum >= MAX_LOCKING_TIME) && startsensing == 2)
     {
 
       Serial.println("timeaccum is: " + String(timeaccum));
       bleSerial.println("timeaccum is: " + String(timeaccum));
-      //Serial.println("Unlocking Time is : " + String(UNLOCKING_TIME));
-      //print key_signal
+      // Serial.println("Unlocking Time is : " + String(UNLOCKING_TIME));
+      // print key_signal
       Serial.println("key_signal is: " + String(key_signal));
       bleSerial.println("key_signal is: " + String(key_signal));
 
       digitalWrite(LED_PIN, LOW);
       digitalWrite(MOTOR_2, LOW);
-      if (key_signal==1 && timeaccum < MAX_LOCKING_TIME)
+      if (key_signal == 1 && timeaccum < MAX_LOCKING_TIME)
       {
         switchCharacteristic.setValue('33');
       }
       else
       {
-        //error locking
+        // error locking
         switchCharacteristic.setValue('34');
       }
-      
+
       Serial.println("mid is: " + String(mid) + " and before is: " + String(midBefore));
       bleSerial.println("mid is: " + String(mid) + " and before is: " + String(midBefore));
       if (midBefore == mid)
@@ -1197,11 +1160,6 @@ void loop()
     }
     // ForceSensorCharacteristic.setValueLE(sensorvoltage);
 
-   
-
-
-
-
     timeaccum += ForceSensingInterval;
 
     previousMillis2 = currentMillis;
@@ -1210,17 +1168,18 @@ void loop()
   // go back and stop doesent need someone connected to work
   if (currentMillis - previousMillis3 > ForceSensingInterval && goback != 0)
   {
-    if(key_signal){
-      key_signal=0;
+    if (key_signal)
+    {
+      key_signal = 0;
     }
     Serial.println("going back " + String(gobacktime));
 
-    //only print if divided by 1000
+    // only print if divided by 1000
     if (gobacktime % 1000 == 0)
     {
-       bleSerial.println("going back " + String(gobacktime));
+      bleSerial.println("going back " + String(gobacktime));
     }
-   
+
     // float sensorvoltage = getForceSensorVoltage();
     if (goback == 1)
     {
@@ -1284,7 +1243,7 @@ void loop()
       delay(10);
       // popravek da je senzor sredine vedno odklopljen
       digitalWrite(MOTOR_1, HIGH);
-      gobacktime+=2000;
+      gobacktime += 2000;
       goback = 5;
     }
     if (goback == 8 && gobacktime <= 0)
@@ -1333,12 +1292,10 @@ void loop()
     // poll peripheral
   }
 
-   bleSerial.poll();
+  bleSerial.poll();
 
+  // BLESerial.poll();
 
-
-  //BLESerial.poll();
-  
   /*
      if (currentMillis - previousMillis4 > 10 ){
        previousMillis4=currentMillis;
@@ -1364,7 +1321,6 @@ void loop()
   */
 }
 
-
 void blePeripheralConnectHandler(BLECentral &central)
 {
   // central connected event handler
@@ -1374,12 +1330,17 @@ void blePeripheralConnectHandler(BLECentral &central)
   previousMillis = millis();
   someoneconnected = true;
   unsigned char batteryLevel = getBatteryLevel();
+
   Serial.println("Battery level: " + String(batteryLevel) + "%");
+
+  
+
+  
   batteryLevelCharacteristic.setValue(batteryLevel);
   int8_t temp_c = (int8_t)(temperature_data_get() - 10);
   temperatureCharacteristic.setValue(temp_c);
   Serial.println("Chip Temperature:" + String(temp_c) + " C");
-  digitalWrite(DRV_SLEEP,HIGH);
+  digitalWrite(DRV_SLEEP, HIGH);
 }
 void blePeripheralDisconnectHandler(BLECentral &central)
 {
@@ -1387,13 +1348,12 @@ void blePeripheralDisconnectHandler(BLECentral &central)
   Serial.print(F("Disconnected event, central: "));
   someoneconnected = false;
   calibrationinprogress = 0;
-  
 
   Serial.println(central.address());
   blinkLed(8, 100);
   memset(WrittenPass, 0, sizeof(WrittenPass));
   PASSCharacteristic.setValue(0);
-  digitalWrite(DRV_SLEEP,LOW);
+  digitalWrite(DRV_SLEEP, LOW);
 }
 void PASSCharacteristicWritten(BLECentral &central, BLECharacteristic &characteristic)
 {
@@ -1494,12 +1454,11 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic)
   {
 
     Serial.println(F("Manual Go to mid"));
-    manualgotomidinprogress=1;
+    manualgotomidinprogress = 1;
     midBefore = mid;
     digitalWrite(MOTOR_2, LOW);
     digitalWrite(MOTOR_1, LOW);
     digitalWrite(MOTOR_1, HIGH);
-    
   }
 }
 void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
@@ -1512,7 +1471,7 @@ void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
     if (CalibrateCharacteristic.value() == '1')
     {
       Serial.println(F("Calibrate Going Forward"));
-      calibdir=1;
+      calibdir = 1;
 
       if (!calibrationinprogress)
       {
@@ -1544,7 +1503,7 @@ void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
     {
       Serial.println(F("Calibrate Going Backward"));
 
-       calibdir=2;
+      calibdir = 2;
 
       if (!calibrationinprogress)
       {
@@ -1577,23 +1536,21 @@ void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
 
       // OK we are done calibrating
 
-      if(calibrationinprogress==1){
+      if (calibrationinprogress == 1)
+      {
 
-        if(calibdir==2){
-          UNLOCKING_TIME+=200;
-          calibdir=0;
-        }
-        if (calibdir==1)
+        if (calibdir == 2)
         {
-          LOCKING_TIME+=200;
-          calibdir=0;
+          UNLOCKING_TIME += 200;
+          calibdir = 0;
         }
-        
-
-
-
+        if (calibdir == 1)
+        {
+          LOCKING_TIME += 200;
+          calibdir = 0;
+        }
       }
-      
+
       calibrationinprogress = 0;
       Serial.println(F("Calibrate Done"));
       Serial.println(startsensing);
