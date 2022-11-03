@@ -60,18 +60,18 @@ BLESerial bleSerial = BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
 
 // We want to use 44100 Hz sampling rate to reach 22050Hz band. 128 (64 pairs) samples are used
 // in FFT calculation with result contains 64 bins (22050Hz/64bins -> ~344,5Hz per bin).
-#define FFT_TEST_SAMPLE_FREQ_HZ          44100.0f                        //!< Frequency of complex input samples.
-#define FFT_TEST_COMP_SAMPLES_LEN        128                             //!< Complex numbers input data array size. Correspond to FFT calculation this number must be power of two starting from 2^5 (2^4 pairs) with maximum value 2^13 (2^12 pairs).
+#define FFT_TEST_SAMPLE_FREQ_HZ          2200.0f                        //!< Frequency of complex input samples.
+#define FFT_TEST_COMP_SAMPLES_LEN        256                            //!< Complex numbers input data array size. Correspond to FFT calculation this number must be power of two starting from 2^5 (2^4 pairs) with maximum value 2^13 (2^12 pairs).
 #define FFT_TEST_OUT_SAMPLES_LEN         (FFT_TEST_COMP_SAMPLES_LEN / 2) //!< Output array size.
 
 #define SIGNALS_RESOLUTION               100.0f                          //!< Sine wave frequency and noise amplitude resolution. To count resolution as decimal places in number use this formula: resolution = 1/SIGNALS_RESOLUTION .
-#define SINE_WAVE_FREQ_MAX               20000                           //!< Maximum frequency of generated sine wave.
+#define SINE_WAVE_FREQ_MAX               1000                           //!< Maximum frequency of generated sine wave.
 #define NOISE_AMPLITUDE                  1                               //!< Amplitude of generated noise added to signal.
 
 static uint32_t  m_ifft_flag             = 0;                            //!< Flag that selects forward (0) or inverse (1) transform.
 static uint32_t  m_do_bit_reverse        = 1;                            //!< Flag that enables (1) or disables (0) bit reversal of output.
-static float32_t m_fft_input_f32[FFT_TEST_COMP_SAMPLES_LEN];             //!< FFT input array. Time domain.
-static float32_t m_fft_output_f32[FFT_TEST_OUT_SAMPLES_LEN];             //!< FFT output data. Frequency domain.
+static float32_t m_fft_input_f64[FFT_TEST_COMP_SAMPLES_LEN];             //!< FFT input array. Time domain.
+static float32_t m_fft_output_f64[FFT_TEST_OUT_SAMPLES_LEN];             //!< FFT output data. Frequency domain.
 
 
 
@@ -84,9 +84,6 @@ float32_t sine_freq;
 //#define LED_0 23
 //#define LED_1 24
 //#define LED_2 25
-const uint8_t sin_table[] = {0, 0, 1, 2, 4, 6, 9, 12, 16, 20, 24, 29, 35, 40, 46, 53, 59, 66, 74, 81, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 175, 182, 190, 197, 203, 210, 216, 221, 227,
-                             232, 236, 240, 244, 247, 250, 252, 254, 255, 255, 255, 255, 255, 254, 252, 250, 247, 244, 240, 236, 232, 227, 221, 216, 210, 203, 197, 190, 182, 175, 168, 160, 152, 144, 136, 128, 120, 112, 104,
-                             96, 88, 81, 74, 66, 59, 53, 46, 40, 35, 29, 24, 20, 16, 12, 9, 6, 4, 2, 1, 0};
 uint32_t counter = 0;
 char PASSWORD[9] = "12345678";
 char WrittenPass[9];
@@ -146,7 +143,7 @@ int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
 
- int readings[200];
+//int readings[200];
 
 
 // create peripheral instance, see pinouts above
@@ -239,6 +236,50 @@ static void fft_generate_samples(float32_t * p_input,
     }
 }
 
+static void fft_generate_samples_square(float32_t * p_input,
+                                 uint16_t    size,
+                                 float32_t   sampling_freq,
+                                 float32_t   sine_freq,
+                                 bool        add_noise)
+{
+    uint32_t i;
+
+    /* Remember that sample is represented as two next values in array. */
+    uint32_t sample_idx = 0;
+
+    if (2 > size)
+    {
+        return;
+    }
+
+  
+
+    for (i = 0; i < (size - 1UL); i += 2) {
+        sample_idx = i / 2;
+        // Real part.
+        p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
+
+        //make square wave
+        if (p_input[(uint16_t)i] > 0)
+        {
+          p_input[(uint16_t)i] = 1.0;
+        }
+        else
+        {
+          p_input[(uint16_t)i] = 0.0;
+        }
+        
+        // Img part.
+        p_input[(uint16_t)i + 1] = 0;
+    }
+
+
+
+
+}
+
+
+
 /**
  * @brief Function for processing generated sine wave samples.
  * @param[in] p_input        Pointer to input data array with complex number samples in time domain.
@@ -267,7 +308,9 @@ static void draw_line(uint16_t line_width)
         line[i] = '-';
     }
     line[line_width] = 0;
-    bleSerial.print(line);
+    //"%s\r\n", tmp_str
+    String tmp_str = String(line)+String("\r\n");
+    bleSerial.print(tmp_str);
 }
 
 /**
@@ -279,10 +322,9 @@ static void draw_line(uint16_t line_width)
 static void draw_fft_header(float32_t input_sine_freq, bool is_noisy)
 {
 
-    String str = "In " + String((uint16_t)input_sine_freq) + "Hz, nos: " +
-                 String((uint32_t)((is_noisy == true) ? "yes" : "no")) + ".\r\n";
+    String str = "In " + String((uint16_t)input_sine_freq) + "Hz";
 
-    bleSerial.print(str);
+    bleSerial.println(str);
 }
 
 /**
@@ -304,7 +346,8 @@ static void draw_fft_data(float32_t * p_input_data, uint16_t data_size, uint16_t
     arm_max_f32(p_input_data, data_size, &max_value, &max_val_index);
 
     //print max value
-    String str = "Max value: " + String(max_value) + " at index: " + String(max_val_index) + "\r\n";
+    String str = "Max value: " + String(max_value) + " at index: " + String(max_val_index) + "max index:"+
+    String(data_size)+"\r\n";
     bleSerial.print(str);
 
     // Draw graph. Put space if number is less than currently processed, put '|' character otherwise.
@@ -314,7 +357,7 @@ static void draw_fft_data(float32_t * p_input_data, uint16_t data_size, uint16_t
         curr_drawing_val = max_value * curr_percent;
         for (graph_x = 0; graph_x < data_size; graph_x++)
         {
-            if (m_fft_output_f32[graph_x] > curr_drawing_val)
+            if (m_fft_output_f64[graph_x] > curr_drawing_val)
             {
                 tmp_str[graph_x] = '|';
             } else
@@ -328,7 +371,10 @@ static void draw_fft_data(float32_t * p_input_data, uint16_t data_size, uint16_t
 
     }
 
-    draw_line(data_size);
+    //print out all the bins
+    
+
+    //draw_line(data_size);
 }
 /** @brief Function for erasing a page in flash.
  *
@@ -831,6 +877,8 @@ void loop()
         //we read signal every 100ms and check 200 samples in ~100ms - frequency is ~2000hz
         //car key sensor signal lasts 400ms and has frequency of 1/1ms=1000Hz
 
+        
+
        
         for (int i = 0; i < 200; i++)
         {
@@ -843,10 +891,10 @@ void loop()
 
           if(key_signal_tmp>300){
             read1++;
-            readings[i]=1;
+            //readings[i]=1;
           }
           else{
-            readings[i]=0;
+            //readings[i]=0;
           }
           
 
@@ -866,25 +914,7 @@ void loop()
         // stdlib using with Segger Embedded Studio uses rand() configured to return values up to
         // 32767 instead of 0x7fffffff configured in other compilers. It causes that generated sine
         // frequency is smaller, but example works in the same way.
-        sine_freq = 12000;
-        fft_generate_samples(m_fft_input_f32,
-                             FFT_TEST_COMP_SAMPLES_LEN,
-                             FFT_TEST_SAMPLE_FREQ_HZ,
-                             sine_freq, false);
-
-        // Process generated data. 64 pairs of complex data (real, img). It is important to use
-        // proper arm_cfft_sR_f32 structure associated with input/output data length.
-        // For example:
-        //  - 128 numbers in input array (64 complex pairs of samples) -> 64 output bins power data -> &arm_cfft_sR_f32_len64.
-        //  - 256 numbers in input array (128 complex pairs of samples) -> 128 output bins power data -> &arm_cfft_sR_f32_len128.
-        fft_process(m_fft_input_f32,
-                    &arm_cfft_sR_f32_len64,
-                    m_fft_output_f32,
-                    FFT_TEST_OUT_SAMPLES_LEN);
-
-        // Draw FFT bin power chart.
-        draw_fft_header(sine_freq, noise);
-        draw_fft_data(m_fft_output_f32, FFT_TEST_OUT_SAMPLES_LEN, GRAPH_WINDOW_HEIGHT);
+        
       
       //Serial.println("");
       
@@ -893,7 +923,7 @@ void loop()
 
       if(read1>20 && read1<180){
         //Serial.println("key_signal is valid ");
-        bleSerial.println("key_signal is valid ");
+        //bleSerial.println("key_signal is valid ");
       //bleSerial.println("read 1s: " + String(read1));
       //bleSerial.println("read 0s: " + String(200-read1));
 
@@ -905,23 +935,23 @@ void loop()
         }
 
         keysensor_cooldown=1;
-        key_signal_interval=2000;
+        key_signal_interval=1000;
 
         //reconstruct the signal to string and send it to the phone
         String key_signal_string="";
         
-        for (int i = 0; i < 200; i++)
-        {
-          if(readings[i]==1){
-            key_signal_string=key_signal_string+"-";
-          }
-          else{
-            key_signal_string=key_signal_string+".";
-          }
+        // for (int i = 0; i < 200; i++)
+        // {
+        //   if(readings[i]==1){
+        //     key_signal_string=key_signal_string+"-";
+        //   }
+        //   else{
+        //     key_signal_string=key_signal_string+".";
+        //   }
           
-        }
+        // }
         //print first 100
-        bleSerial.println( key_signal_string.substring(0,100));
+        //bleSerial.println( key_signal_string.substring(0,100));
         
         //print last 100
         //bleSerial.println(key_signal_string.substring(100,200));
@@ -957,10 +987,38 @@ void loop()
      
 
 
-      memset(readings, 0, sizeof(readings));
+     // memset(readings, 0, sizeof(readings));
 
       //clear readings array using memset
         //digitalWrite(LED_PIN, LOW);
+
+        sine_freq = 1000;
+        fft_generate_samples(m_fft_input_f64,
+                             FFT_TEST_COMP_SAMPLES_LEN,
+                             FFT_TEST_SAMPLE_FREQ_HZ,
+                             sine_freq, false);
+
+        // Process generated data. 64 pairs of complex data (real, img). It is important to use
+        // proper arm_cfft_sR_f32 structure associated with input/output data length.
+        // For example:
+        //  - 128 numbers in input array (64 complex pairs of samples) -> 64 output bins power data -> &arm_cfft_sR_f32_len64.
+        //  - 256 numbers in input array (128 complex pairs of samples) -> 128 output bins power data -> &arm_cfft_sR_f32_len128.
+        fft_process(m_fft_input_f64,
+                    &arm_cfft_sR_f32_len128,
+                    m_fft_output_f64,
+                    FFT_TEST_OUT_SAMPLES_LEN);
+
+        // Draw FFT bin power chart.
+        draw_fft_header(sine_freq, noise);
+        //delete the first 2 bins
+
+        m_fft_output_f64[0]=0;
+        m_fft_output_f64[1]=0;
+
+
+        draw_fft_data(m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN, GRAPH_WINDOW_HEIGHT);
+
+        delay(4000);
 
     
       
