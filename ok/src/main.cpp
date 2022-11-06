@@ -751,6 +751,7 @@ void loop()
     if (err_code == NRF_ERROR_NOT_FOUND)
     {
       // no_more_soc_evts = true;
+      //
     }
     else if (err_code != NRF_SUCCESS)
     {
