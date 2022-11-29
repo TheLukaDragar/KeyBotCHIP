@@ -40,6 +40,9 @@ extern "C"
 #define DEBUG_FFT 16
 #define POWER_MAIN 6
 
+
+
+
 #define ARM_MATH_CM0
 #include "arm_math.h"
 
@@ -139,6 +142,11 @@ int key_signal = 0;
 int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
+
+
+// Define the pins used for the SPI interface
+
+
 
 // int readings[200];
 
@@ -859,7 +867,7 @@ void loop()
 
         key_signal_tmp = analogRead(UNLOCK_SENSOR);
 
-        m_fft_input_f64[(uint16_t)i] = (float32_t)key_signal_tmp > 300 ? 1.0 : 0.0;
+        m_fft_input_f64[(uint16_t)i] = (float32_t)key_signal_tmp;
         m_fft_input_f64[(uint16_t)i + 1] = 0.0;
 
         if (key_signal_tmp > 300)
@@ -871,6 +879,8 @@ void loop()
 
         delayMicroseconds(360);
       }
+
+      //bleSerial.println(key_signal_tmp);
 
       digitalWrite(DEBUG_FFT, LOW);
 
@@ -942,7 +952,7 @@ void loop()
 
         // check if number of 1s is between FFT_TEST_OUT_SAMPLES_LEN/2 +- 20
 
-        if ((frequency_of_max_bin > 900 && frequency_of_max_bin < 1100 || frequency_of_max_bin > 400 && frequency_of_max_bin < 600))
+        if ((frequency_of_max_bin > 400) && (frequency_of_max_bin < 600))
 
         {
           // led on
@@ -961,8 +971,8 @@ void loop()
         else
         {
           // led of
-          bleSerial.println("INVALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
-           bleSerial.println("index of max bin: " + String(max_val_index) + " value: " + String(max_value));
+          //bleSerial.println("INVALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
+           //bleSerial.println("index of max bin: " + String(max_val_index) + " value: " + String(max_value));
         }
         //draw_fft_data(m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN, GRAPH_WINDOW_HEIGHT);
       }
@@ -971,6 +981,10 @@ void loop()
 
        
     }
+
+   
+
+  
     
 
       key_signal_begin = 0;
@@ -1334,9 +1348,7 @@ void blePeripheralConnectHandler(BLECentral &central)
 
   Serial.println("Battery level: " + String(batteryLevel) + "%");
 
-  
 
-  
   batteryLevelCharacteristic.setValue(batteryLevel);
   int8_t temp_c = (int8_t)(temperature_data_get() - 10);
   temperatureCharacteristic.setValue(temp_c);
