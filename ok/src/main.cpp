@@ -39,6 +39,30 @@ extern "C"
 #define UNLOCK_SENSOR 5
 #define DEBUG_FFT 16
 #define POWER_MAIN 6
+#define SDN 4 //this is shutown 
+
+#include <RH_RF22.h>
+#include <MyGenericSPI.h>
+#include <RHGenericSPI.h>
+
+
+static const uint8_t _SS   = 2 ;
+static const uint8_t _MOSI = PIN_SPI_MOSI ;
+static const uint8_t _MISO = PIN_SPI_MISO ;
+static const uint8_t _SCK  = PIN_SPI_SCK ;
+
+
+
+#define NIRQ 28
+
+
+//init MyGenericSPI
+MyGenericSPI hardware_spi2; //using default constructor spi settings
+RH_RF22 rf22(_SS,NIRQ,hardware_spi2);
+
+
+
+
 
 
 
@@ -142,6 +166,17 @@ int key_signal = 0;
 int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
+
+
+
+
+//  RH_RF22(uint8_t slaveSelectPin = SS, uint8_t interruptPin = 2, RHGenericSPI& spi = hardware_spi);
+//get pointer to spi object
+
+
+
+
+
 
 
 // Define the pins used for the SPI interface
@@ -541,6 +576,10 @@ void setup()
   pinMode(UNLOCK_SENSOR, INPUT); // A1 ANALOG
   // MAKE analog input
 
+  pinMode(NIRQ, INPUT);
+  pinMode(SDN, OUTPUT);
+  digitalWrite(SDN, LOW);
+
   // digitalWrite(PIN_A4, LOW);
   //  pinMode(LED_0, OUTPUT);
   //  pinMode(LED_1, OUTPUT);
@@ -598,6 +637,14 @@ void setup()
   // begin initialization
   bleSerial.begin();
 
+
+ 
+
+
+
+
+  
+
   Serial.println(F("BLE LED Peripheral"));
 
   blinkLed(1, 1000);
@@ -650,6 +697,59 @@ void setup()
     Serial.println("FS has entry using it");
     ForceSensorLimitCharacteristic2.setValue((char)forcelimit2);
   }
+
+   int ok = rf22.init();
+  if (ok)
+  {
+    Serial.println("RF22 init ok");
+    bleSerial.println("RF22 init ok");
+  }
+  else
+  {
+    Serial.println("RF22 init failed");
+    bleSerial.println("RF22 init failed");
+  }
+
+  if(ok){
+
+    //get temperature
+    float temp = rf22.temperatureRead();
+    Serial.println("Temperature RF22: " + String(temp));
+
+    //set frequency
+    rf22.setFrequency(433.0);
+
+    //set to receive mode
+    rf22.setModeRx();
+
+    
+
+
+    
+    
+    
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // uint32_t err_code;
   // err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
   // Serial.println(err_code);
@@ -805,6 +905,7 @@ void loop()
 
   if (currentMillis - previousMillis5 > key_signal_interval)
   {
+   
     previousMillis5 = currentMillis;
     digitalWrite(DEBUG_FFT, LOW);
 
