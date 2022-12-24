@@ -167,6 +167,76 @@ int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
 
+//MAKE an array of ModemConfigChoice
+
+
+
+RH_RF22::ModemConfigChoice choises[]={
+
+
+
+//fill with fsk 
+//add your choises here
+// FSK_Rb2Fd5,	     ///< FSK, No Manchester, Rb = 2kbs,    Fd = 5kHz
+// 	FSK_Rb2_4Fd36,       ///< FSK, No Manchester, Rb = 2.4kbs,  Fd = 36kHz
+// 	FSK_Rb4_8Fd45,       ///< FSK, No Manchester, Rb = 4.8kbs,  Fd = 45kHz
+// 	FSK_Rb9_6Fd45,       ///< FSK, No Manchester, Rb = 9.6kbs,  Fd = 45kHz
+// 	FSK_Rb19_2Fd9_6,     ///< FSK, No Manchester, Rb = 19.2kbs, Fd = 9.6kHz
+// 	FSK_Rb38_4Fd19_6,    ///< FSK, No Manchester, Rb = 38.4kbs, Fd = 19.6kHz
+// 	FSK_Rb57_6Fd28_8,    ///< FSK, No Manchester, Rb = 57.6kbs, Fd = 28.8kHz
+// 	FSK_Rb125Fd125,      ///< FSK, No Manchester, Rb = 125kbs,  Fd = 125kHz
+// 	FSK_Rb_512Fd2_5,     ///< FSK, No Manchester, Rb = 512bs,  Fd = 2.5kHz, for POCSAG compatibility
+// 	FSK_Rb_512Fd4_5, 
+// GFSK_Rb2Fd5,         ///< GFSK, No Manchester, Rb = 2kbs,    Fd = 5kHz
+// 	GFSK_Rb2_4Fd36,      ///< GFSK, No Manchester, Rb = 2.4kbs,  Fd = 36kHz
+// 	GFSK_Rb4_8Fd45,      ///< GFSK, No Manchester, Rb = 4.8kbs,  Fd = 45kHz
+// 	GFSK_Rb9_6Fd45,      ///< GFSK, No Manchester, Rb = 9.6kbs,  Fd = 45kHz
+// 	GFSK_Rb19_2Fd9_6,    ///< GFSK, No Manchester, Rb = 19.2kbs, Fd = 9.6kHz
+// 	GFSK_Rb38_4Fd19_6,   ///< GFSK, No Manchester, Rb = 38.4kbs, Fd = 19.6kHz
+// 	GFSK_Rb57_6Fd28_8,   ///< GFSK, No Manchester, Rb = 57.6kbs, Fd = 28.8kHz
+// 	GFSK_Rb125Fd125,     ///< GFSK, No Manchester, Rb = 125kbs,  Fd = 125kHz
+
+// 	OOK_Rb1_2Bw75,       ///< OOK, No Manchester, Rb = 1.2kbs,  Rx Bandwidth = 75kHz
+// 	OOK_Rb2_4Bw335,      ///< OOK, No Manchester, Rb = 2.4kbs,  Rx Bandwidth = 335kHz
+// 	OOK_Rb4_8Bw335,      ///< OOK, No Manchester, Rb = 4.8kbs,  Rx Bandwidth = 335kHz
+// 	OOK_Rb9_6Bw335,      ///< OOK, No Manchester, Rb = 9.6kbs,  Rx Bandwidth = 335kHz
+// 	OOK_Rb19_2Bw335,     ///< OOK, No Manchester, Rb = 19.2kbs, Rx Bandwidth = 335kHz
+// 	OOK_Rb38_4Bw335,     ///< OOK, No Manchester, Rb = 38.4kbs, Rx Bandwidth = 335kHz
+// 	OOK_Rb40Bw335  
+RH_RF22::FSK_Rb2Fd5, // 0
+RH_RF22::FSK_Rb2_4Fd36, // 1
+RH_RF22::FSK_Rb4_8Fd45, // 2
+RH_RF22::FSK_Rb9_6Fd45, // 3
+RH_RF22::FSK_Rb19_2Fd9_6, // 4
+RH_RF22::FSK_Rb38_4Fd19_6, // 5
+RH_RF22::FSK_Rb57_6Fd28_8, // 6
+RH_RF22::FSK_Rb125Fd125, // 7
+RH_RF22::FSK_Rb_512Fd2_5, // 8
+RH_RF22::FSK_Rb_512Fd4_5, // 9
+
+RH_RF22::GFSK_Rb2Fd5, // 10
+RH_RF22::GFSK_Rb2_4Fd36, // 11
+RH_RF22::GFSK_Rb4_8Fd45, // 12
+RH_RF22::GFSK_Rb9_6Fd45, // 13
+RH_RF22::GFSK_Rb19_2Fd9_6, // 14
+RH_RF22::GFSK_Rb38_4Fd19_6, // 15
+RH_RF22::GFSK_Rb57_6Fd28_8, // 16
+RH_RF22::GFSK_Rb125Fd125, // 17
+
+RH_RF22::OOK_Rb1_2Bw75, // 18
+RH_RF22::OOK_Rb2_4Bw335, // 19
+RH_RF22::OOK_Rb4_8Bw335, // 20
+RH_RF22::OOK_Rb9_6Bw335, // 21
+RH_RF22::OOK_Rb19_2Bw335, // 22
+RH_RF22::OOK_Rb38_4Bw335, // 23
+RH_RF22::OOK_Rb40Bw335 // 24
+
+
+
+
+};
+
+int choise = 0; //choise of modem config
 
 
 
@@ -699,6 +769,7 @@ void setup()
   }
 
    int ok = rf22.init();
+   Serial.println(ok);
   if (ok)
   {
     Serial.println("RF22 init ok");
@@ -715,21 +786,21 @@ void setup()
     //get temperature
     float temp = rf22.temperatureRead();
     Serial.println("Temperature RF22: " + String(temp));
+    bleSerial.println("Temperature RF22: " + String(temp));
 
     //set frequency
     rf22.setFrequency(433.0);
 
     //set to receive mode
+    
+    //set Modem config to fsk
+    int ooo =rf22.setModemConfig(RH_RF22::FSK_Rb_512Fd4_5);
+
+    Serial.println("setModemConfig: " + String(ooo));
+    
+
+
     rf22.setModeRx();
-
-    
-
-
-    
-    
-    
-
-
 
 
 
@@ -848,6 +919,28 @@ printf("Flashwrite example\n\r");
 void loop()
 {
 
+   if(rf22.available()){
+      //read data
+      uint8_t buf[RH_RF22_MAX_MESSAGE_LEN];
+      uint8_t len = sizeof(buf);
+      if (rf22.recv(buf, &len))
+      {
+        //print data
+        Serial.print("got request: ");
+        Serial.println((char*)buf);
+        bleSerial.write("got request: ");
+        bleSerial.write(buf, len);
+        
+        
+      }
+      else
+      {
+        Serial.println("recv failed");
+        bleSerial.write("recv failed");
+      }
+    }
+    
+
   
 
   uint32_t err_code;
@@ -905,6 +998,14 @@ void loop()
 
   if (currentMillis - previousMillis5 > key_signal_interval)
   {
+
+
+    
+    
+
+    //check if rf22 has data
+   
+    
    
     previousMillis5 = currentMillis;
     digitalWrite(DEBUG_FFT, LOW);
@@ -1399,13 +1500,13 @@ void loop()
 
   if (!someoneconnected && startsensing == 0 && goback == 0)
   {
-    // wait for event/interrupt (low power mode)
-    // Enter Low power mode
+    //wait for event/interrupt (low power mode)
+    //Enter Low power mode
     Serial.println(F("Sleep"));
     sd_app_evt_wait();
     Serial.println(F("WakeUp"));
     sd_nvic_ClearPendingIRQ(SWI2_IRQn);
-    // poll peripheral
+    //poll peripheral
   }
 
   bleSerial.poll();
@@ -1552,6 +1653,152 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic)
   }
   if ((int)a == 1)
   {
+//     //change rf22 config to one of the values in choises array
+
+//     int okkk=rf22.setModemConfig(choises[choise]);
+//     //print choise index and choise value
+//     Serial.print("choise index: ");
+//     Serial.print(choise);
+//     Serial.print(" choise value: ");
+//     Serial.println(choises[choise]);
+//     //print rf22 config
+//     Serial.print("rf22 config: ");
+//     Serial.println(okkk);
+
+//     //wait for 1 second
+//     delay(200);
+
+
+//     //set to receive mode
+//     rf22.setModeRx();
+    
+    
+//     //wait for 1 second
+//     delay(100);
+
+//     //set wake up timer to 1 second
+//     //rf22.setWutPeriod(200,0,0);
+
+
+//     //get status
+//     uint8_t status = rf22.statusRead();
+//     //print status
+//     Serial.print("status: ");
+//     Serial.println(status,HEX);
+
+//     // RH_RF22_REG_02_DEVICE_STATUS                    0x02
+// #define RH_RF22_FFOVL                              0x80
+// #define RH_RF22_FFUNFL                             0x40
+// #define RH_RF22_RXFFEM                             0x20
+// #define RH_RF22_HEADERR                            0x10
+// #define RH_RF22_FREQERR                            0x08
+// #define RH_RF22_LOCKDET                            0x04
+// #define RH_RF22_CPS                                0x03
+// #define RH_RF22_CPS_IDLE                           0x00
+// #define RH_RF22_CPS_RX                             0x01
+// #define RH_RF22_CPS_TX                             0x10
+
+// //get status
+
+//     //if status is 0x01
+    
+//     //if status is 0x10
+//     if(status&RH_RF22_CPS_TX)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_CPS_TX");
+//     }
+//     //if status is 0x00
+//     if(status&RH_RF22_CPS_IDLE)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_CPS_IDLE");
+//     }
+
+//     //if status is 0x80
+//     if(status&RH_RF22_FFOVL)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_FFOVL");
+//     }
+//     //if status is 0x40
+//     if(status&RH_RF22_FFUNFL)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_FFUNFL");
+//     }
+//     //if status is 0x20
+//     if(status&RH_RF22_RXFFEM)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_RXFFEM");
+//     }
+//     //if status is 0x10
+//     if(status&RH_RF22_HEADERR)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_HEADERR");
+//     }
+//     //if status is 0x08
+//     if(status&RH_RF22_FREQERR)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_FREQERR");
+//     }
+//     //if status is 0x04
+//     if(status&RH_RF22_LOCKDET)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_LOCKDET");
+//     }
+
+//     //if status is 0x03
+//     if(status&RH_RF22_CPS)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_CPS");
+//     }
+
+//     //if status is 0x00
+//     if(status&RH_RF22_CPS_IDLE)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_CPS_IDLE");
+//     }
+//     //if status is 0x01
+//     if(status&RH_RF22_CPS_RX)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_CPS_RX");
+//     }
+//     //if status is 0x10
+//     if(status&RH_RF22_CPS_TX)
+//     {
+//       //print status
+//       Serial.println("status is RH_RF22_CPS_TX");
+//     }
+
+
+
+    
+    
+
+
+
+
+
+   
+    
+    
+//     //increase choise index
+//     choise++;
+//     //if choise index is bigger than choises array size
+//     if(choise>=24)
+//     {
+//       //reset choise index
+//       choise=0;
+//     }
+
     Serial.println(F("Manual Forward"));
     digitalWrite(MOTOR_1, HIGH);
     delay(200);

@@ -935,7 +935,7 @@ typedef struct {                                    /*!< TWIM Structure         
   __I  uint32_t  RESERVED8[63];
   __IO uint32_t  INTEN;                             /*!< Enable or disable interrupt                                           */
   __IO uint32_t  INTENSET;                          /*!< Enable interrupt                                                      */
-  __IO uint32_t  INTENCLR;                          /*!< Disable interrupt                                                     */
+  __IO uint32_t  INTENCLR;                          /*!< Disable                                                      */
   __I  uint32_t  RESERVED9[110];
   __IO uint32_t  ERRORSRC;                          /*!< Error source                                                          */
   __I  uint32_t  RESERVED10[14];
