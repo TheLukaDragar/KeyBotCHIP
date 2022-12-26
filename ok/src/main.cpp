@@ -32,14 +32,17 @@ extern "C"
 #define BLE_RST 9  // nrf518822 unused
 // LED pin
 #define LED_PIN 18
-#define MOTOR_1 22
-#define MOTOR_2 20
+#define MOTOR_1 8//22 old
+#define MOTOR_2 14//20 old
 #define MID_SENSOR 21
 #define DRV_SLEEP 19
 #define UNLOCK_SENSOR 5
 #define DEBUG_FFT 16
 #define POWER_MAIN 6
-#define SDN 4 //this is shutown 
+#define SDN1 15
+#define SDN 4 //this is shutown for 1st key sensor
+#define TX_ANT 0
+#define RX_ANT 22
 
 #include <RH_RF22.h>
 #include <MyGenericSPI.h>
@@ -166,6 +169,7 @@ int key_signal = 0;
 int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
+int signal2init = 0;
 
 //MAKE an array of ModemConfigChoice
 
@@ -244,6 +248,11 @@ int choise = 0; //choise of modem config
 //get pointer to spi object
 
 
+//write a callback function that recieves a string
+void callback(String data) {
+  bleSerial.println("callback");
+  bleSerial.println(data);
+}
 
 
 
@@ -647,8 +656,15 @@ void setup()
   // MAKE analog input
 
   pinMode(NIRQ, INPUT);
-  pinMode(SDN, OUTPUT);
+  pinMode(SDN, OUTPUT); //SLEEP FOR 2ND KEY SENSOR
+
+  pinMode(SDN1, OUTPUT); //SLEEP FOR 1ST KEY SENSOR
+  digitalWrite(SDN1, LOW);
   digitalWrite(SDN, LOW);
+
+  pinMode(RX_ANT,INPUT);
+  pinMode(TX_ANT,INPUT);
+
 
   // digitalWrite(PIN_A4, LOW);
   //  pinMode(LED_0, OUTPUT);
@@ -768,7 +784,13 @@ void setup()
     ForceSensorLimitCharacteristic2.setValue((char)forcelimit2);
   }
 
-   int ok = rf22.init();
+  //how do i pass bleSerial to rf22 so i can use it in the rf22 library?
+
+  //init rf22
+  
+    //
+   int ok = rf22.init(&callback);
+   signal2init=ok;
    Serial.println(ok);
   if (ok)
   {
@@ -921,6 +943,7 @@ void loop()
 
    if(rf22.available()){
       //read data
+      bleSerial.println("got request");
       uint8_t buf[RH_RF22_MAX_MESSAGE_LEN];
       uint8_t len = sizeof(buf);
       if (rf22.recv(buf, &len))
@@ -975,9 +998,25 @@ void loop()
       // blePeripheral.central().disconnect();
       // someoneconnected=false;
     }
+
+    //send data to rf22
+    //  uint8_t data[] = "Hello World!";
+    // rf22.send(data, sizeof(data));
+    // rf22.waitPacketSent();
+    // Serial.println("sent");
+
+
+    //check if rf22 has data
+
+
+
+
+
+
+
   }
 
-  mid_reading = digitalRead(MID_SENSOR) ^ 1;
+  mid_reading = digitalRead(MID_SENSOR);
   if (mid_reading != lastMidState)
   {
     lastDebounceTime = millis();
@@ -1083,6 +1122,7 @@ void loop()
       }
 
       //bleSerial.println(key_signal_tmp);
+      
 
       digitalWrite(DEBUG_FFT, LOW);
 
@@ -1101,10 +1141,10 @@ void loop()
       // print
 
       // Serial.println("Frequency: " + String(frequency) + " Hz");
-      // bleSerial.println("Frequency of sampling: " + String(frequency) + " Hz");
+       //bleSerial.println("Frequency of sampling: " + String(frequency*1000.0) + " Hz");
 
       // Serial.println("Time: " + String(time) + " ms");
-      // bleSerial.println("Time: " + String(time) + " ms");
+       //bleSerial.println("Time: " + String(time) + " ms");
 
       bool ok = false;
       if (read1 > (FFT_TEST_OUT_SAMPLES_LEN / 2) - 20 && read1 < (FFT_TEST_OUT_SAMPLES_LEN / 2) + 20)
@@ -1142,9 +1182,25 @@ void loop()
 
         arm_max_f32(&m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2, &max_value, &max_val_index);
 
+        //get the second highest bin
+
+        float32_t max_value2;
+        uint32_t max_val_index2;
+
+        //remove the highest bin
+        m_fft_output_f64[max_val_index] = 0;
+
+        //get the second highest bin
+        arm_max_f32(&m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2, &max_value2, &max_val_index2);
+
+
+
+
 
 
         float32_t frequency_of_max_bin = (float32_t)max_val_index * (float32_t)frequency * 1000.0 / (float32_t)FFT_TEST_OUT_SAMPLES_LEN;
+
+
 
         // Serial.println("Frequency of max bin: " + String(frequency_of_max_bin) + " Hz");
 
@@ -1153,6 +1209,10 @@ void loop()
         // count 1s
 
         // check if number of 1s is between FFT_TEST_OUT_SAMPLES_LEN/2 +- 20
+
+        //TODO REMOVE NOISE FILTER
+
+
 
         if ((frequency_of_max_bin > 400) && (frequency_of_max_bin < 600))
 
@@ -1167,6 +1227,8 @@ void loop()
           bleSerial.println("VALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
           //print index of max bin and value
           bleSerial.println("index of max bin: " + String(max_val_index) + " value: " + String(max_value));
+          //print index of second max bin and value
+          bleSerial.println("2 max bin: " + String(max_val_index2) + " value: " + String(max_value2));
           keysensor_cooldown = 1;
           key_signal_interval = 1000;
         }
@@ -1502,10 +1564,10 @@ void loop()
   {
     //wait for event/interrupt (low power mode)
     //Enter Low power mode
-    Serial.println(F("Sleep"));
-    sd_app_evt_wait();
-    Serial.println(F("WakeUp"));
-    sd_nvic_ClearPendingIRQ(SWI2_IRQn);
+    // Serial.println(F("Sleep"));
+    // sd_app_evt_wait();
+    // Serial.println(F("WakeUp"));
+    // sd_nvic_ClearPendingIRQ(SWI2_IRQn);
     //poll peripheral
   }
 
@@ -1653,130 +1715,172 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic)
   }
   if ((int)a == 1)
   {
-//     //change rf22 config to one of the values in choises array
+    //change rf22 config to one of the values in choises array
+    bleSerial.println("state:");
+    bleSerial.println(signal2init?"signal init 2 ok":"signal init  2 failed");
 
-//     int okkk=rf22.setModemConfig(choises[choise]);
-//     //print choise index and choise value
-//     Serial.print("choise index: ");
-//     Serial.print(choise);
-//     Serial.print(" choise value: ");
-//     Serial.println(choises[choise]);
-//     //print rf22 config
-//     Serial.print("rf22 config: ");
-//     Serial.println(okkk);
+  //    int ok = rf22.init(&callback);
+  //  Serial.println(ok);
+  // if (ok)
+  // {
+  //   Serial.println("RF22 init ok");
+  //   bleSerial.println("RF22 init ok");
+  // }
+  // else
+  // {
+  //   Serial.println("RF22 init failed");
+  //   bleSerial.println("RF22 init failed");
+  // }
 
-//     //wait for 1 second
-//     delay(200);
+  
+
+    int okkk=rf22.setModemConfig(choises[choise]);
+    //print choise index and choise value
+    Serial.print("choise index: ");
+    Serial.print(choise);
+    Serial.print(" choise value: ");
+    Serial.println(choises[choise]);
+    //print rf22 config
+    Serial.print("rf22 config: ");
+    Serial.println(okkk);
+
+    bleSerial.print("choise index: ");
+    bleSerial.print(choise);
+    bleSerial.print(" choise value: ");
+    bleSerial.println(choises[choise]);
+    bleSerial.print("rf22 config: ");
+    bleSerial.println(okkk);
 
 
-//     //set to receive mode
-//     rf22.setModeRx();
+    //wait for 1 second
+    delay(200);
+
+
+
+    //set to receive mode
+    rf22.setModeRx();
     
     
-//     //wait for 1 second
-//     delay(100);
+    //wait for 1 second
+    delay(100);
 
-//     //set wake up timer to 1 second
-//     //rf22.setWutPeriod(200,0,0);
+    //set wake up timer to 1 second
+    //rf22.setWutPeriod(200,0,0);
 
 
-//     //get status
-//     uint8_t status = rf22.statusRead();
-//     //print status
-//     Serial.print("status: ");
-//     Serial.println(status,HEX);
+    //get status
+    uint8_t status = rf22.statusRead();
+    //print status
+    Serial.print("status: ");
+    Serial.println(status,HEX);
+    bleSerial.println("status: ");
+    bleSerial.println(status,HEX);
 
-//     // RH_RF22_REG_02_DEVICE_STATUS                    0x02
-// #define RH_RF22_FFOVL                              0x80
-// #define RH_RF22_FFUNFL                             0x40
-// #define RH_RF22_RXFFEM                             0x20
-// #define RH_RF22_HEADERR                            0x10
-// #define RH_RF22_FREQERR                            0x08
-// #define RH_RF22_LOCKDET                            0x04
-// #define RH_RF22_CPS                                0x03
-// #define RH_RF22_CPS_IDLE                           0x00
-// #define RH_RF22_CPS_RX                             0x01
-// #define RH_RF22_CPS_TX                             0x10
+    // RH_RF22_REG_02_DEVICE_STATUS                    0x02
+#define RH_RF22_FFOVL                              0x80
+#define RH_RF22_FFUNFL                             0x40
+#define RH_RF22_RXFFEM                             0x20
+#define RH_RF22_HEADERR                            0x10
+#define RH_RF22_FREQERR                            0x08
+#define RH_RF22_LOCKDET                            0x04
+#define RH_RF22_CPS                                0x03
+#define RH_RF22_CPS_IDLE                           0x00
+#define RH_RF22_CPS_RX                             0x01
+#define RH_RF22_CPS_TX                             0x10
 
-// //get status
 
-//     //if status is 0x01
+//get status
+
+    //if status is 0x01
     
-//     //if status is 0x10
-//     if(status&RH_RF22_CPS_TX)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_CPS_TX");
-//     }
-//     //if status is 0x00
-//     if(status&RH_RF22_CPS_IDLE)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_CPS_IDLE");
-//     }
+    //if status is 0x10
+    if(status&RH_RF22_CPS_TX)
+    {
+      //print status
+      Serial.println("status is RH_RF22_CPS_TX");
+      bleSerial.println("status is RH_RF22_CPS_TX");
+    }
+    //if status is 0x00
+    if(status&RH_RF22_CPS_IDLE)
+    {
+      //print status
+      Serial.println("status is RH_RF22_CPS_IDLE");
+      bleSerial.println("status is RH_RF22_CPS_IDLE");
+    }
 
-//     //if status is 0x80
-//     if(status&RH_RF22_FFOVL)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_FFOVL");
-//     }
-//     //if status is 0x40
-//     if(status&RH_RF22_FFUNFL)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_FFUNFL");
-//     }
-//     //if status is 0x20
-//     if(status&RH_RF22_RXFFEM)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_RXFFEM");
-//     }
-//     //if status is 0x10
-//     if(status&RH_RF22_HEADERR)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_HEADERR");
-//     }
-//     //if status is 0x08
-//     if(status&RH_RF22_FREQERR)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_FREQERR");
-//     }
-//     //if status is 0x04
-//     if(status&RH_RF22_LOCKDET)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_LOCKDET");
-//     }
+    //if status is 0x80
+    if(status&RH_RF22_FFOVL)
+    {
+      //print status
+      Serial.println("status is RH_RF22_FFOVL");
+      bleSerial.println("status is RH_RF22_FFOVL");
+    }
+    //if status is 0x40
+    if(status&RH_RF22_FFUNFL)
+    {
+      //print status
+      Serial.println("status is RH_RF22_FFUNFL");
+      bleSerial.println("status is RH_RF22_FFUNFL");
+    }
+    //if status is 0x20
+    if(status&RH_RF22_RXFFEM)
+    {
+      //print status
+      Serial.println("status is RH_RF22_RXFFEM");
+      bleSerial.println("status is RH_RF22_RXFFEM");
+    }
+    //if status is 0x10
+    if(status&RH_RF22_HEADERR)
+    {
+      //print status
+      Serial.println("status is RH_RF22_HEADERR");
+      bleSerial.println("status is RH_RF22_HEADERR");
+    }
+    //if status is 0x08
+    if(status&RH_RF22_FREQERR)
+    {
+      //print status
+      Serial.println("status is RH_RF22_FREQERR");
+      bleSerial.println("status is RH_RF22_FREQERR");
+    }
+    //if status is 0x04
+    if(status&RH_RF22_LOCKDET)
+    {
+      //print status
+      Serial.println("status is RH_RF22_LOCKDET");
+      bleSerial.println("status is RH_RF22_LOCKDET");
+    }
 
-//     //if status is 0x03
-//     if(status&RH_RF22_CPS)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_CPS");
-//     }
+    //if status is 0x03
+    if(status&RH_RF22_CPS)
+    {
+      //print status
+      Serial.println("status is RH_RF22_CPS");
+      bleSerial.println("status is RH_RF22_CPS");
+    }
 
-//     //if status is 0x00
-//     if(status&RH_RF22_CPS_IDLE)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_CPS_IDLE");
-//     }
-//     //if status is 0x01
-//     if(status&RH_RF22_CPS_RX)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_CPS_RX");
-//     }
-//     //if status is 0x10
-//     if(status&RH_RF22_CPS_TX)
-//     {
-//       //print status
-//       Serial.println("status is RH_RF22_CPS_TX");
-//     }
+    //if status is 0x00
+    if(status&RH_RF22_CPS_IDLE)
+    {
+      //print status
+      Serial.println("status is RH_RF22_CPS_IDLE");
+      bleSerial.println("status is RH_RF22_CPS_IDLE");
+    }
+    //if status is 0x01
+    if(status&RH_RF22_CPS_RX)
+    {
+      //print status
+      Serial.println("status is RH_RF22_CPS_RX");
+      bleSerial.println("status is RH_RF22_CPS_RX");
+    }
+    //if status is 0x10
+    if(status&RH_RF22_CPS_TX)
+    {
+      //print status
+      Serial.println("status is RH_RF22_CPS_TX");
+      bleSerial.println("status is RH_RF22_CPS_TX");
+    }
+
 
 
 
@@ -1790,14 +1894,14 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic)
    
     
     
-//     //increase choise index
-//     choise++;
-//     //if choise index is bigger than choises array size
-//     if(choise>=24)
-//     {
-//       //reset choise index
-//       choise=0;
-//     }
+    //increase choise index
+    choise++;
+    //if choise index is bigger than choises array size
+    if(choise>=24)
+    {
+      //reset choise index
+      choise=0;
+    }
 
     Serial.println(F("Manual Forward"));
     digitalWrite(MOTOR_1, HIGH);
