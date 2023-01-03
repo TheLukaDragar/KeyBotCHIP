@@ -104,6 +104,9 @@ static uint32_t m_do_bit_reverse = 1;                        //!< Flag that enab
 static float32_t m_fft_input_f64[FFT_TEST_COMP_SAMPLES_LEN]; //!< FFT input array. Time domain.
 static float32_t m_fft_output_f64[FFT_TEST_OUT_SAMPLES_LEN]; //!< FFT output data. Frequency domain.
 
+
+
+
 bool noise = false;
 float32_t sine_freq;
 
@@ -828,6 +831,10 @@ void setup()
 
   }
 
+   
+
+
+
 
 
 
@@ -1159,6 +1166,26 @@ void loop()
                     &arm_cfft_sR_f32_len128,
                     m_fft_output_f64,
                     FFT_TEST_OUT_SAMPLES_LEN);
+
+          //malloc
+        // float32_t *m_fft_output_f64_tmp = (float32_t *)malloc(FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
+        // memcpy(m_fft_output_f64_tmp, m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
+
+        // //malloc again
+        // float32_t *m_fft_output_f64_tmp2 = (float32_t *)malloc(FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
+        // memcpy(m_fft_output_f64_tmp2, m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
+
+
+
+
+
+
+
+
+
+        
+
+          
 
         // Draw FFT bin power chart.
         // draw_fft_header(sine_freq, noise);

@@ -206,6 +206,94 @@ bool RH_RF22::init(void (*callbackPtr)(String ) )
     return true;
 }
 
+bool RH_RF22::init_raw(void (*callbackPtr)(String ) )
+{
+#if RH_PLATFORM == RH_PLATFORM_ESP8266
+    flagIsr[0] = false;
+    flagIsr[1] = false;
+    flagIsr[2] = false;
+#endif
+
+    //call callback function
+    //(*callbackPtr) ("TEST");
+
+    if (!RHSPIDriver::init())
+	return false;
+
+    // Determine the interrupt number that corresponds to the interruptPin
+    int interruptNumber = digitalPinToInterrupt(_interruptPin);
+    if (interruptNumber == NOT_AN_INTERRUPT)
+	return false;
+#ifdef RH_ATTACHINTERRUPT_TAKES_PIN_NUMBER
+    interruptNumber = _interruptPin;
+#endif
+
+    // Tell the low level SPI interface we will use SPI within this interrupt
+    spiUsingInterrupt(interruptNumber);
+
+    // Software reset the device
+    reset();
+
+    spiWrite(0x06, 0x00); // interrupt disable
+spiWrite(0x07, 0x01); // to ready mode
+delay(50);
+
+//read interrupt status registers to clear
+// the interrupt flags and release NIRQ pin
+spiRead(0x03);
+spiRead(0x04);
+
+// Set crystal osc load capacitance
+spiWrite(0x09, 0x7F); // cap = 12.5pf
+
+// Set frequency to 434
+spiWrite(0x75, 0x53);
+spiWrite(0x76, 0x62);
+spiWrite(0x77, 0x00);
+
+// packet handler
+spiWrite(0x35, 0xF8);
+spiWrite(0x71, 0x63);
+
+// set to avoid false packet detection
+spiWrite(0x30, 0x84);
+spiWrite(0x32, 0x0F);
+spiWrite(0x33, 0x77);
+spiWrite(0x08, 0x10);
+
+// packet handler settings
+spiWrite(0x35, 0xF8);
+spiWrite(0x71, 0x63);
+// set GPIOs
+spiWrite(0x0b, 0xD4);
+spiWrite(0x0c, 0xCF);
+spiWrite(0x51, 0x36);
+// Set Non default registers
+spiWrite(0x69, 0x60);
+
+// Modem Parameters
+spiWrite(0x1F, 0x00);
+spiWrite(0x1C, 0xC7); // 412.1 KHz BW
+spiWrite(0x20, 0x7D);
+spiWrite(0x21, 0x63);
+spiWrite(0x22, 0x86);
+spiWrite(0x23, 0x25);
+spiWrite(0x24, 0x01);
+spiWrite(0x25, 0x08);
+spiWrite(0x2C, 0x18);
+spiWrite(0x2D, 0xD0);
+spiWrite(0x2E, 0x2E);
+spiWrite(0x71, 0x69);
+spiWrite(0x70, 0x0E);
+
+// Turn Receiver ON
+spiWrite(0x07, 0x04);
+
+    //turn
+
+    return true;
+}
+
 // C++ level interrupt handler for this instance
 void RH_RF22::handleInterrupt()
 {

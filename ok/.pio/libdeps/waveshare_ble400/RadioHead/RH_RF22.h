@@ -1068,6 +1068,8 @@ public:
     /// \return  true if everything was successful
     bool        init(void (*callbackPtr)(String));
 
+    bool init_raw(void (*callbackPtr)(String));
+
     /// Issues a software reset to the 
     /// RH_RF22 module. Blocks for 1ms to ensure the reset is complete.
     void           reset();
