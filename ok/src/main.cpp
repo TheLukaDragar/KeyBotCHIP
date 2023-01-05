@@ -32,15 +32,15 @@ extern "C"
 #define BLE_RST 9  // nrf518822 unused
 // LED pin
 #define LED_PIN 18
-#define MOTOR_1 8//22 old
-#define MOTOR_2 14//20 old
+#define MOTOR_1 8  // 22 old
+#define MOTOR_2 14 // 20 old
 #define MID_SENSOR 21
 #define DRV_SLEEP 19
 #define UNLOCK_SENSOR 5
 #define DEBUG_FFT 16
 #define POWER_MAIN 6
 #define SDN1 15
-#define SDN 4 //this is shutown for 1st key sensor
+#define SDN 4 // this is shutown for 1st key sensor
 #define TX_ANT 0
 #define RX_ANT 22
 
@@ -48,27 +48,16 @@ extern "C"
 #include <MyGenericSPI.h>
 #include <RHGenericSPI.h>
 
-
-static const uint8_t _SS   = 2 ;
-static const uint8_t _MOSI = PIN_SPI_MOSI ;
-static const uint8_t _MISO = PIN_SPI_MISO ;
-static const uint8_t _SCK  = PIN_SPI_SCK ;
-
-
+static const uint8_t _SS = 2;
+static const uint8_t _MOSI = PIN_SPI_MOSI;
+static const uint8_t _MISO = PIN_SPI_MISO;
+static const uint8_t _SCK = PIN_SPI_SCK;
 
 #define NIRQ 28
 
-
-//init MyGenericSPI
-MyGenericSPI hardware_spi2; //using default constructor spi settings
-RH_RF22 rf22(_SS,NIRQ,hardware_spi2);
-
-
-
-
-
-
-
+// init MyGenericSPI
+MyGenericSPI hardware_spi2; // using default constructor spi settings
+RH_RF22 rf22(_SS, NIRQ, hardware_spi2);
 
 #define ARM_MATH_CM0
 #include "arm_math.h"
@@ -95,37 +84,38 @@ BLESerial bleSerial = BLESerial(BLE_REQ, BLE_RDY, BLE_RST);
 #define FFT_TEST_COMP_SAMPLES_LEN 256                            //!< Complex numbers input data array size. Correspond to FFT calculation this number must be power of two starting from 2^5 (2^4 pairs) with maximum value 2^13 (2^12 pairs).
 #define FFT_TEST_OUT_SAMPLES_LEN (FFT_TEST_COMP_SAMPLES_LEN / 2) //!< Output array size.
 
-#define SIGNALS_RESOLUTION 100.0f //!< Sine wave frequency and noise amplitude resolution. To count resolution as decimal places in number use this formula: resolution = 1/SIGNALS_RESOLUTION .
-#define SINE_WAVE_FREQ_MAX 1000   //!< Maximum frequency of generated sine wave.
-#define NOISE_AMPLITUDE 1         //!< Amplitude of generated noise added to signal.
+// #define SIGNALS_RESOLUTION 100.0f //!< Sine wave frequency and noise amplitude resolution. To count resolution as decimal places in number use this formula: resolution = 1/SIGNALS_RESOLUTION .
+// #define SINE_WAVE_FREQ_MAX 1000   //!< Maximum frequency of generated sine wave.
+// #define NOISE_AMPLITUDE 1         //!< Amplitude of generated noise added to signal.
 
-static uint32_t m_ifft_flag = 0;                             //!< Flag that selects forward (0) or inverse (1) transform.
-static uint32_t m_do_bit_reverse = 1;                        //!< Flag that enables (1) or disables (0) bit reversal of output.
-static float32_t m_fft_input_f64[FFT_TEST_COMP_SAMPLES_LEN]; //!< FFT input array. Time domain.
-static float32_t m_fft_output_f64[FFT_TEST_OUT_SAMPLES_LEN]; //!< FFT output data. Frequency domain.
+static uint32_t m_ifft_flag = 0;      //!< Flag that selects forward (0) or inverse (1) transform.
+static uint32_t m_do_bit_reverse = 1; //!< Flag that enables (1) or disables (0) bit reversal of output.
+// static float32_t m_fft_input_f64[FFT_TEST_COMP_SAMPLES_LEN]; //!< FFT input array. Time domain.
+// static float32_t m_fft_output_f64[FFT_TEST_OUT_SAMPLES_LEN]; //!< FFT output data. Frequency domain.
 
-
-
+// pointer to float arry
+float32_t *m_fft_input_f64;
+float32_t *m_fft_output_f64;
 
 bool noise = false;
-float32_t sine_freq;
+// float32_t sine_freq;
 
-//#define MID_SENSOR 16 // FOR TESTING ONLY key 1
-//#define ANALOG_IN_PIN 6
-//#define LED_0 23
-//#define LED_1 24
-//#define LED_2 25
+// #define MID_SENSOR 16 // FOR TESTING ONLY key 1
+// #define ANALOG_IN_PIN 6
+// #define LED_0 23
+// #define LED_1 24
+// #define LED_2 25
 uint32_t counter = 0;
 char PASSWORD[9] = "12345678";
 char WrittenPass[9];
 char remoteDeviceName[6];
 char myname[7] = "Dragar";
 String tempstring;
-int state = 0;
-int check_mid = 0;
-int mid_motor = 0;
-int startsensing = 0;
-int goback = 0;
+uint8_t state = 0;
+uint8_t check_mid = 0;
+uint8_t mid_motor = 0;
+uint8_t startsensing = 0;
+uint8_t goback = 0;
 long gobacktime = 0;
 bool someoneconnected = false;
 unsigned long previousMillis = 0;
@@ -146,19 +136,19 @@ long MAX_LOCKING_TIME = 15000;
 long MAX_UNLOCKING_TIME = 15000;
 long LOCKING_TIME = 1500;
 long UNLOCKING_TIME = 1500; // pazi more bit toliko da vsaj spremeni mid sensor
-int calibrationinprogress = 0;
-int calibrationstatus = 0;
-int calibdir = 0;
-int manualgotomidinprogress = 0;
+uint8_t calibrationinprogress = 0;
+uint8_t calibrationstatus = 0;
+uint8_t calibdir = 0;
+uint8_t manualgotomidinprogress = 0;
 long MAXGOTOMIDTIME1 = 10000;
 long MAXGOTOMIDTIME2 = 17000;
 uint32_t *addr;
 static uint8_t fs_callback_flag;
 long timeaccum = 0;
 long timeaccum2 = 0; // interval at which to do something (milliseconds)
-int mid = 0;         // the current reading from the input pin
-int lastMidState = LOW;
-int midBeforeBack = 0;
+uint8_t mid = 0;     // the current reading from the input pin
+uint8_t lastMidState = LOW;
+uint8_t midBeforeBack = 0;
 long MaxgObacktime = 10000;
 unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 10;
@@ -167,103 +157,97 @@ int mid_reading = 0;
 
 int keysensor_cooldown = 0;
 
-int key_signal_begin = 0;
+uint8_t key_signal_begin = 0;
 int key_signal = 0;
 int key_signal_tmp = 0;
 int key_signal_count = 0;
 int key_signal_before = 0;
 int signal2init = 0;
 
-//MAKE an array of ModemConfigChoice
+// array of uint8_t
+static float32_t ftt_of_ref[64]; //!< FFT output data. Frequency domain.
+uint8_t fft_calib_state = 0;
+uint32_t max_val_index_ref = 0;
+float32_t max_value_ref = 0;
+float32_t hellinger_threshold = 0.7;
 
+#define DO_SLEEP 1  
 
+// MAKE an array of ModemConfigChoice
 
-RH_RF22::ModemConfigChoice choises[]={
+RH_RF22::ModemConfigChoice choises[] = {
 
+    // fill with fsk
+    // add your choises here
+    // FSK_Rb2Fd5,	     ///< FSK, No Manchester, Rb = 2kbs,    Fd = 5kHz
+    // 	FSK_Rb2_4Fd36,       ///< FSK, No Manchester, Rb = 2.4kbs,  Fd = 36kHz
+    // 	FSK_Rb4_8Fd45,       ///< FSK, No Manchester, Rb = 4.8kbs,  Fd = 45kHz
+    // 	FSK_Rb9_6Fd45,       ///< FSK, No Manchester, Rb = 9.6kbs,  Fd = 45kHz
+    // 	FSK_Rb19_2Fd9_6,     ///< FSK, No Manchester, Rb = 19.2kbs, Fd = 9.6kHz
+    // 	FSK_Rb38_4Fd19_6,    ///< FSK, No Manchester, Rb = 38.4kbs, Fd = 19.6kHz
+    // 	FSK_Rb57_6Fd28_8,    ///< FSK, No Manchester, Rb = 57.6kbs, Fd = 28.8kHz
+    // 	FSK_Rb125Fd125,      ///< FSK, No Manchester, Rb = 125kbs,  Fd = 125kHz
+    // 	FSK_Rb_512Fd2_5,     ///< FSK, No Manchester, Rb = 512bs,  Fd = 2.5kHz, for POCSAG compatibility
+    // 	FSK_Rb_512Fd4_5,
+    // GFSK_Rb2Fd5,         ///< GFSK, No Manchester, Rb = 2kbs,    Fd = 5kHz
+    // 	GFSK_Rb2_4Fd36,      ///< GFSK, No Manchester, Rb = 2.4kbs,  Fd = 36kHz
+    // 	GFSK_Rb4_8Fd45,      ///< GFSK, No Manchester, Rb = 4.8kbs,  Fd = 45kHz
+    // 	GFSK_Rb9_6Fd45,      ///< GFSK, No Manchester, Rb = 9.6kbs,  Fd = 45kHz
+    // 	GFSK_Rb19_2Fd9_6,    ///< GFSK, No Manchester, Rb = 19.2kbs, Fd = 9.6kHz
+    // 	GFSK_Rb38_4Fd19_6,   ///< GFSK, No Manchester, Rb = 38.4kbs, Fd = 19.6kHz
+    // 	GFSK_Rb57_6Fd28_8,   ///< GFSK, No Manchester, Rb = 57.6kbs, Fd = 28.8kHz
+    // 	GFSK_Rb125Fd125,     ///< GFSK, No Manchester, Rb = 125kbs,  Fd = 125kHz
 
+    // 	OOK_Rb1_2Bw75,       ///< OOK, No Manchester, Rb = 1.2kbs,  Rx Bandwidth = 75kHz
+    // 	OOK_Rb2_4Bw335,      ///< OOK, No Manchester, Rb = 2.4kbs,  Rx Bandwidth = 335kHz
+    // 	OOK_Rb4_8Bw335,      ///< OOK, No Manchester, Rb = 4.8kbs,  Rx Bandwidth = 335kHz
+    // 	OOK_Rb9_6Bw335,      ///< OOK, No Manchester, Rb = 9.6kbs,  Rx Bandwidth = 335kHz
+    // 	OOK_Rb19_2Bw335,     ///< OOK, No Manchester, Rb = 19.2kbs, Rx Bandwidth = 335kHz
+    // 	OOK_Rb38_4Bw335,     ///< OOK, No Manchester, Rb = 38.4kbs, Rx Bandwidth = 335kHz
+    // 	OOK_Rb40Bw335
+    RH_RF22::FSK_Rb2Fd5,       // 0
+    RH_RF22::FSK_Rb2_4Fd36,    // 1
+    RH_RF22::FSK_Rb4_8Fd45,    // 2
+    RH_RF22::FSK_Rb9_6Fd45,    // 3
+    RH_RF22::FSK_Rb19_2Fd9_6,  // 4
+    RH_RF22::FSK_Rb38_4Fd19_6, // 5
+    RH_RF22::FSK_Rb57_6Fd28_8, // 6
+    RH_RF22::FSK_Rb125Fd125,   // 7
+    RH_RF22::FSK_Rb_512Fd2_5,  // 8
+    RH_RF22::FSK_Rb_512Fd4_5,  // 9
 
-//fill with fsk 
-//add your choises here
-// FSK_Rb2Fd5,	     ///< FSK, No Manchester, Rb = 2kbs,    Fd = 5kHz
-// 	FSK_Rb2_4Fd36,       ///< FSK, No Manchester, Rb = 2.4kbs,  Fd = 36kHz
-// 	FSK_Rb4_8Fd45,       ///< FSK, No Manchester, Rb = 4.8kbs,  Fd = 45kHz
-// 	FSK_Rb9_6Fd45,       ///< FSK, No Manchester, Rb = 9.6kbs,  Fd = 45kHz
-// 	FSK_Rb19_2Fd9_6,     ///< FSK, No Manchester, Rb = 19.2kbs, Fd = 9.6kHz
-// 	FSK_Rb38_4Fd19_6,    ///< FSK, No Manchester, Rb = 38.4kbs, Fd = 19.6kHz
-// 	FSK_Rb57_6Fd28_8,    ///< FSK, No Manchester, Rb = 57.6kbs, Fd = 28.8kHz
-// 	FSK_Rb125Fd125,      ///< FSK, No Manchester, Rb = 125kbs,  Fd = 125kHz
-// 	FSK_Rb_512Fd2_5,     ///< FSK, No Manchester, Rb = 512bs,  Fd = 2.5kHz, for POCSAG compatibility
-// 	FSK_Rb_512Fd4_5, 
-// GFSK_Rb2Fd5,         ///< GFSK, No Manchester, Rb = 2kbs,    Fd = 5kHz
-// 	GFSK_Rb2_4Fd36,      ///< GFSK, No Manchester, Rb = 2.4kbs,  Fd = 36kHz
-// 	GFSK_Rb4_8Fd45,      ///< GFSK, No Manchester, Rb = 4.8kbs,  Fd = 45kHz
-// 	GFSK_Rb9_6Fd45,      ///< GFSK, No Manchester, Rb = 9.6kbs,  Fd = 45kHz
-// 	GFSK_Rb19_2Fd9_6,    ///< GFSK, No Manchester, Rb = 19.2kbs, Fd = 9.6kHz
-// 	GFSK_Rb38_4Fd19_6,   ///< GFSK, No Manchester, Rb = 38.4kbs, Fd = 19.6kHz
-// 	GFSK_Rb57_6Fd28_8,   ///< GFSK, No Manchester, Rb = 57.6kbs, Fd = 28.8kHz
-// 	GFSK_Rb125Fd125,     ///< GFSK, No Manchester, Rb = 125kbs,  Fd = 125kHz
+    RH_RF22::GFSK_Rb2Fd5,       // 10
+    RH_RF22::GFSK_Rb2_4Fd36,    // 11
+    RH_RF22::GFSK_Rb4_8Fd45,    // 12
+    RH_RF22::GFSK_Rb9_6Fd45,    // 13
+    RH_RF22::GFSK_Rb19_2Fd9_6,  // 14
+    RH_RF22::GFSK_Rb38_4Fd19_6, // 15
+    RH_RF22::GFSK_Rb57_6Fd28_8, // 16
+    RH_RF22::GFSK_Rb125Fd125,   // 17
 
-// 	OOK_Rb1_2Bw75,       ///< OOK, No Manchester, Rb = 1.2kbs,  Rx Bandwidth = 75kHz
-// 	OOK_Rb2_4Bw335,      ///< OOK, No Manchester, Rb = 2.4kbs,  Rx Bandwidth = 335kHz
-// 	OOK_Rb4_8Bw335,      ///< OOK, No Manchester, Rb = 4.8kbs,  Rx Bandwidth = 335kHz
-// 	OOK_Rb9_6Bw335,      ///< OOK, No Manchester, Rb = 9.6kbs,  Rx Bandwidth = 335kHz
-// 	OOK_Rb19_2Bw335,     ///< OOK, No Manchester, Rb = 19.2kbs, Rx Bandwidth = 335kHz
-// 	OOK_Rb38_4Bw335,     ///< OOK, No Manchester, Rb = 38.4kbs, Rx Bandwidth = 335kHz
-// 	OOK_Rb40Bw335  
-RH_RF22::FSK_Rb2Fd5, // 0
-RH_RF22::FSK_Rb2_4Fd36, // 1
-RH_RF22::FSK_Rb4_8Fd45, // 2
-RH_RF22::FSK_Rb9_6Fd45, // 3
-RH_RF22::FSK_Rb19_2Fd9_6, // 4
-RH_RF22::FSK_Rb38_4Fd19_6, // 5
-RH_RF22::FSK_Rb57_6Fd28_8, // 6
-RH_RF22::FSK_Rb125Fd125, // 7
-RH_RF22::FSK_Rb_512Fd2_5, // 8
-RH_RF22::FSK_Rb_512Fd4_5, // 9
-
-RH_RF22::GFSK_Rb2Fd5, // 10
-RH_RF22::GFSK_Rb2_4Fd36, // 11
-RH_RF22::GFSK_Rb4_8Fd45, // 12
-RH_RF22::GFSK_Rb9_6Fd45, // 13
-RH_RF22::GFSK_Rb19_2Fd9_6, // 14
-RH_RF22::GFSK_Rb38_4Fd19_6, // 15
-RH_RF22::GFSK_Rb57_6Fd28_8, // 16
-RH_RF22::GFSK_Rb125Fd125, // 17
-
-RH_RF22::OOK_Rb1_2Bw75, // 18
-RH_RF22::OOK_Rb2_4Bw335, // 19
-RH_RF22::OOK_Rb4_8Bw335, // 20
-RH_RF22::OOK_Rb9_6Bw335, // 21
-RH_RF22::OOK_Rb19_2Bw335, // 22
-RH_RF22::OOK_Rb38_4Bw335, // 23
-RH_RF22::OOK_Rb40Bw335 // 24
-
-
-
+    RH_RF22::OOK_Rb1_2Bw75,   // 18
+    RH_RF22::OOK_Rb2_4Bw335,  // 19
+    RH_RF22::OOK_Rb4_8Bw335,  // 20
+    RH_RF22::OOK_Rb9_6Bw335,  // 21
+    RH_RF22::OOK_Rb19_2Bw335, // 22
+    RH_RF22::OOK_Rb38_4Bw335, // 23
+    RH_RF22::OOK_Rb40Bw335    // 24
 
 };
 
-int choise = 0; //choise of modem config
-
-
+int choise = 0; // choise of modem config
 
 //  RH_RF22(uint8_t slaveSelectPin = SS, uint8_t interruptPin = 2, RHGenericSPI& spi = hardware_spi);
-//get pointer to spi object
+// get pointer to spi object
 
-
-//write a callback function that recieves a string
-void callback(String data) {
+// write a callback function that recieves a string
+void callback(String data)
+{
   bleSerial.println("callback");
   bleSerial.println(data);
 }
 
-
-
-
-
 // Define the pins used for the SPI interface
-
-
 
 // int readings[200];
 
@@ -312,87 +296,85 @@ void blePeripheralBondedHandler(BLECentral &central);
 void blePeripheralRemoteServicesDiscoveredHandler(BLECentral &central);
 void bleRemoteDeviceNameCharacteristicValueUpdatedHandle(BLECentral &central, BLERemoteCharacteristic &characteristic);
 unsigned char getBatteryLevel(void);
-unsigned int getAnalog(void);
-float getForceSensorVoltage();
-/**
- * @brief Function for generating sine wave samples for FFT calculations.
- *
- * This function fill up output array with generated sine wave data with proper sampling frequency.
- * Must be executed before fft_process function.
- *
- * @param[in] p_input     Input array to fill with sine wave generated data.
- * @param[in] size        Input array size.
- * @param[in] sample_freq Sine wave sampling frequency.
- * @param[in] sine_freq   Sine wave frequency.
- * @param[in] add_noise   Flag for enable or disble adding noise for generated data.
- */
-static void fft_generate_samples(float32_t *p_input,
-                                 uint16_t size,
-                                 float32_t sampling_freq,
-                                 float32_t sine_freq,
-                                 bool add_noise)
-{
-  uint32_t i;
+// /**
+//  * @brief Function for generating sine wave samples for FFT calculations.
+//  *
+//  * This function fill up output array with generated sine wave data with proper sampling frequency.
+//  * Must be executed before fft_process function.
+//  *
+//  * @param[in] p_input     Input array to fill with sine wave generated data.
+//  * @param[in] size        Input array size.
+//  * @param[in] sample_freq Sine wave sampling frequency.
+//  * @param[in] sine_freq   Sine wave frequency.
+//  * @param[in] add_noise   Flag for enable or disble adding noise for generated data.
+//  */
+// static void fft_generate_samples(float32_t *p_input,
+//                                  uint16_t size,
+//                                  float32_t sampling_freq,
+//                                  float32_t sine_freq,
+//                                  bool add_noise)
+// {
+//   uint32_t i;
 
-  /* Remember that sample is represented as two next values in array. */
-  uint32_t sample_idx = 0;
+//   /* Remember that sample is represented as two next values in array. */
+//   uint32_t sample_idx = 0;
 
-  if (2 > size)
-  {
-    return;
-  }
+//   if (2 > size)
+//   {
+//     return;
+//   }
 
-  for (i = 0; i < (size - 1UL); i += 2)
-  {
-    sample_idx = i / 2;
-    // Real part.
-    p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
-    if (add_noise)
-    {
-      // Noise can be positive or negative number. Numbers can be cast to signed values.
-      p_input[(uint16_t)i] *= ((rand()) % ((int)(NOISE_AMPLITUDE * SIGNALS_RESOLUTION))) / SIGNALS_RESOLUTION;
-    }
-    // Img part.
-    p_input[(uint16_t)i + 1] = 0;
-  }
-}
+//   for (i = 0; i < (size - 1UL); i += 2)
+//   {
+//     sample_idx = i / 2;
+//     // Real part.
+//     p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
+//     if (add_noise)
+//     {
+//       // Noise can be positive or negative number. Numbers can be cast to signed values.
+//       p_input[(uint16_t)i] *= ((rand()) % ((int)(NOISE_AMPLITUDE * SIGNALS_RESOLUTION))) / SIGNALS_RESOLUTION;
+//     }
+//     // Img part.
+//     p_input[(uint16_t)i + 1] = 0;
+//   }
+// }
 
-static void fft_generate_samples_square(float32_t *p_input,
-                                        uint16_t size,
-                                        float32_t sampling_freq,
-                                        float32_t sine_freq,
-                                        bool add_noise)
-{
-  uint32_t i;
+// static void fft_generate_samples_square(float32_t *p_input,
+//                                         uint16_t size,
+//                                         float32_t sampling_freq,
+//                                         float32_t sine_freq,
+//                                         bool add_noise)
+// {
+//   uint32_t i;
 
-  /* Remember that sample is represented as two next values in array. */
-  uint32_t sample_idx = 0;
+//   /* Remember that sample is represented as two next values in array. */
+//   uint32_t sample_idx = 0;
 
-  if (2 > size)
-  {
-    return;
-  }
+//   if (2 > size)
+//   {
+//     return;
+//   }
 
-  for (i = 0; i < (size - 1UL); i += 2)
-  {
-    sample_idx = i / 2;
-    // Real part.
-    p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
+//   for (i = 0; i < (size - 1UL); i += 2)
+//   {
+//     sample_idx = i / 2;
+//     // Real part.
+//     p_input[(uint16_t)i] = sin(sine_freq * (2.f * PI) * sample_idx / sampling_freq);
 
-    // make square wave
-    if (p_input[(uint16_t)i] > 0)
-    {
-      p_input[(uint16_t)i] = 1.0;
-    }
-    else
-    {
-      p_input[(uint16_t)i] = 0.0;
-    }
+//     // make square wave
+//     if (p_input[(uint16_t)i] > 0)
+//     {
+//       p_input[(uint16_t)i] = 1.0;
+//     }
+//     else
+//     {
+//       p_input[(uint16_t)i] = 0.0;
+//     }
 
-    // Img part.
-    p_input[(uint16_t)i + 1] = 0;
-  }
-}
+//     // Img part.
+//     p_input[(uint16_t)i + 1] = 0;
+//   }
+// }
 
 /**
  * @brief Function for processing generated sine wave samples.
@@ -412,83 +394,83 @@ static void fft_process(float32_t *p_input,
   arm_cmplx_mag_f32(p_input, p_output, output_size);
 }
 
-static void draw_line(uint16_t line_width)
-{
-  uint32_t i;
-  char line[line_width + 1];
+// static void draw_line(uint16_t line_width)
+// {
+//   uint32_t i;
+//   char line[line_width + 1];
 
-  for (i = 0; i < line_width; i++)
-  {
-    line[i] = '-';
-  }
-  line[line_width] = 0;
-  //"%s\r\n", tmp_str
-  String tmp_str = String(line) + String("\r\n");
-  bleSerial.print(tmp_str);
-}
+//   for (i = 0; i < line_width; i++)
+//   {
+//     line[i] = '-';
+//   }
+//   line[line_width] = 0;
+//   //"%s\r\n", tmp_str
+//   String tmp_str = String(line) + String("\r\n");
+//   bleSerial.print(tmp_str);
+// }
 
-/**
- * @brief Function for drawing line and processed data informations.
- * @param[in] input_sine_freq Input sine wave frequency.
- * @param[in] is_noisy        Flag if data is noisy.
- * @param[in] chart_width     Drawing chart height.
- */
-static void draw_fft_header(float32_t input_sine_freq, bool is_noisy)
-{
+// /**
+//  * @brief Function for drawing line and processed data informations.
+//  * @param[in] input_sine_freq Input sine wave frequency.
+//  * @param[in] is_noisy        Flag if data is noisy.
+//  * @param[in] chart_width     Drawing chart height.
+//  */
+// static void draw_fft_header(float32_t input_sine_freq, bool is_noisy)
+// {
 
-  String str = "Input " + String((uint16_t)input_sine_freq) + "Hz";
+//   String str = "Input " + String((uint16_t)input_sine_freq) + "Hz";
 
-  Serial.println(str);
-}
+//   Serial.println(str);
+// }
 
-/**
- * @brief Function for drawing ASCII data processed by FFT function.
- * @param[in] p_input_data Pointer to FFT data array.
- * @param[in] data_size    FFT array size.
- * @param[in] chart_height Drawing chart height.
- */
-static void draw_fft_data(float32_t *p_input_data, uint16_t data_size, uint16_t chart_height)
-{
-  uint32_t graph_y, graph_x;
-  float32_t curr_drawing_val;
-  float32_t curr_percent;
-  float32_t max_value;
-  uint32_t max_val_index;
-  char tmp_str[data_size + 1];
+// /**
+//  * @brief Function for drawing ASCII data processed by FFT function.
+//  * @param[in] p_input_data Pointer to FFT data array.
+//  * @param[in] data_size    FFT array size.
+//  * @param[in] chart_height Drawing chart height.
+//  */
+// static void draw_fft_data(float32_t *p_input_data, uint16_t data_size, uint16_t chart_height)
+// {
+//   uint32_t graph_y, graph_x;
+//   float32_t curr_drawing_val;
+//   float32_t curr_percent;
+//   float32_t max_value;
+//   uint32_t max_val_index;
+//   char tmp_str[data_size + 1];
 
-  // Search FFT max value in input array.
-  arm_max_f32(p_input_data, data_size, &max_value, &max_val_index);
+//   // Search FFT max value in input array.
+//   arm_max_f32(p_input_data, data_size, &max_value, &max_val_index);
 
-  // print max value
-  // String str = "Max value: " + String(max_value) + " at index: " + String(max_val_index) + "max index:" +
-  //              String(data_size) + "\r\n";
-  // Serial.println(str);
+//   // print max value
+//   // String str = "Max value: " + String(max_value) + " at index: " + String(max_val_index) + "max index:" +
+//   //              String(data_size) + "\r\n";
+//   // Serial.println(str);
 
-  // Draw graph. Put space if number is less than currently processed, put '|' character otherwise.
-  for (graph_y = chart_height; graph_y > 0; graph_y--)
-  {
-    curr_percent = ((graph_y - 1) / (chart_height * 1.f));
-    curr_drawing_val = max_value * curr_percent;
-    for (graph_x = 0; graph_x < data_size; graph_x++)
-    {
-      if (m_fft_output_f64[graph_x] > curr_drawing_val)
-      {
-        tmp_str[graph_x] = '|';
-      }
-      else
-      {
-        tmp_str[graph_x] = ' ';
-      }
-    }
-    tmp_str[data_size] = 0;
-    Serial.println(tmp_str);
-     //bleSerial.println(tmp_str);
-  }
+//   // Draw graph. Put space if number is less than currently processed, put '|' character otherwise.
+//   for (graph_y = chart_height; graph_y > 0; graph_y--)
+//   {
+//     curr_percent = ((graph_y - 1) / (chart_height * 1.f));
+//     curr_drawing_val = max_value * curr_percent;
+//     for (graph_x = 0; graph_x < data_size; graph_x++)
+//     {
+//       if (m_fft_output_f64[graph_x] > curr_drawing_val)
+//       {
+//         tmp_str[graph_x] = '|';
+//       }
+//       else
+//       {
+//         tmp_str[graph_x] = ' ';
+//       }
+//     }
+//     tmp_str[data_size] = 0;
+//     Serial.println(tmp_str);
+//      //bleSerial.println(tmp_str);
+//   }
 
-  // print out all the bins
+// print out all the bins
 
-  // draw_line(data_size);
-}
+// draw_line(data_size);
+
 /** @brief Function for erasing a page in flash.
  *
  * @param page_address Address of the first word in the page to be erased.
@@ -659,15 +641,14 @@ void setup()
   // MAKE analog input
 
   pinMode(NIRQ, INPUT);
-  pinMode(SDN, OUTPUT); //SLEEP FOR 2ND KEY SENSOR
+  pinMode(SDN, OUTPUT); // SLEEP FOR 2ND KEY SENSOR
 
-  pinMode(SDN1, OUTPUT); //SLEEP FOR 1ST KEY SENSOR
+  pinMode(SDN1, OUTPUT); // SLEEP FOR 1ST KEY SENSOR
   digitalWrite(SDN1, LOW);
   digitalWrite(SDN, LOW);
 
-  pinMode(RX_ANT,INPUT);
-  pinMode(TX_ANT,INPUT);
-
+  pinMode(RX_ANT, INPUT);
+  pinMode(TX_ANT, INPUT);
 
   // digitalWrite(PIN_A4, LOW);
   //  pinMode(LED_0, OUTPUT);
@@ -726,20 +707,24 @@ void setup()
   // begin initialization
   bleSerial.begin();
 
+  // calib
+  for (int i = 0; i < 64; i++)
+  {
+    ftt_of_ref[i] = 0.0;
+  }
 
- 
+  // malloc float_32_t  m_fft_input_f64[FFT_TEST_COMP_SAMPLES_LEN]
 
+  m_fft_input_f64 = (float32_t *)malloc(FFT_TEST_COMP_SAMPLES_LEN * sizeof(float32_t));
 
-
-
-  
+  m_fft_output_f64 = (float32_t *)malloc(FFT_TEST_COMP_SAMPLES_LEN * sizeof(float32_t));
 
   Serial.println(F("BLE LED Peripheral"));
 
   blinkLed(1, 1000);
   state = 0;
-  switchCharacteristic.setValue('33');
-  CalibrateCharacteristic.setValue('69');
+  switchCharacteristic.setValue('5');
+  CalibrateCharacteristic.setValue('7');
   if (fs_init() != FS_SUCCESS)
   {
     Serial.println("FS error");
@@ -787,14 +772,14 @@ void setup()
     ForceSensorLimitCharacteristic2.setValue((char)forcelimit2);
   }
 
-  //how do i pass bleSerial to rf22 so i can use it in the rf22 library?
+  // how do i pass bleSerial to rf22 so i can use it in the rf22 library?
 
-  //init rf22
-  
-    //
-   int ok = rf22.init(&callback);
-   signal2init=ok;
-   Serial.println(ok);
+  // init rf22
+
+  //
+  int ok = rf22.init(&callback);
+  signal2init = ok;
+  Serial.println(ok);
   if (ok)
   {
     Serial.println("RF22 init ok");
@@ -806,49 +791,26 @@ void setup()
     bleSerial.println("RF22 init failed");
   }
 
-  if(ok){
+  if (ok)
+  {
 
-    //get temperature
+    // get temperature
     float temp = rf22.temperatureRead();
     Serial.println("Temperature RF22: " + String(temp));
     bleSerial.println("Temperature RF22: " + String(temp));
 
-    //set frequency
+    // set frequency
     rf22.setFrequency(433.0);
 
-    //set to receive mode
-    
-    //set Modem config to fsk
-    int ooo =rf22.setModemConfig(RH_RF22::FSK_Rb_512Fd4_5);
+    // set to receive mode
+
+    // set Modem config to fsk
+    int ooo = rf22.setModemConfig(RH_RF22::FSK_Rb_512Fd4_5);
 
     Serial.println("setModemConfig: " + String(ooo));
-    
-
 
     rf22.setModeRx();
-
-
-
   }
-
-   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   // uint32_t err_code;
   // err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
@@ -948,30 +910,26 @@ printf("Flashwrite example\n\r");
 void loop()
 {
 
-   if(rf22.available()){
-      //read data
-      bleSerial.println("got request");
-      uint8_t buf[RH_RF22_MAX_MESSAGE_LEN];
-      uint8_t len = sizeof(buf);
-      if (rf22.recv(buf, &len))
-      {
-        //print data
-        Serial.print("got request: ");
-        Serial.println((char*)buf);
-        bleSerial.write("got request: ");
-        bleSerial.write(buf, len);
-        
-        
-      }
-      else
-      {
-        Serial.println("recv failed");
-        bleSerial.write("recv failed");
-      }
+  if (rf22.available())
+  {
+    // read data
+    bleSerial.println("got request");
+    uint8_t buf[RH_RF22_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+    if (rf22.recv(buf, &len))
+    {
+      // print data
+      Serial.print("got request: ");
+      Serial.println((char *)buf);
+      bleSerial.write("got request: ");
+      bleSerial.write(buf, len);
     }
-    
-
-  
+    else
+    {
+      Serial.println("recv failed");
+      bleSerial.write("recv failed");
+    }
+  }
 
   uint32_t err_code;
   if (true)
@@ -1006,21 +964,13 @@ void loop()
       // someoneconnected=false;
     }
 
-    //send data to rf22
-    //  uint8_t data[] = "Hello World!";
-    // rf22.send(data, sizeof(data));
-    // rf22.waitPacketSent();
-    // Serial.println("sent");
+    // send data to rf22
+    //   uint8_t data[] = "Hello World!";
+    //  rf22.send(data, sizeof(data));
+    //  rf22.waitPacketSent();
+    //  Serial.println("sent");
 
-
-    //check if rf22 has data
-
-
-
-
-
-
-
+    // check if rf22 has data
   }
 
   mid_reading = digitalRead(MID_SENSOR);
@@ -1045,20 +995,14 @@ void loop()
   if (currentMillis - previousMillis5 > key_signal_interval)
   {
 
+    // check if rf22 has data
 
-    
-    
-
-    //check if rf22 has data
-   
-    
-   
     previousMillis5 = currentMillis;
     digitalWrite(DEBUG_FFT, LOW);
 
-    //int mainBatteryLevel = analogRead(POWER_MAIN);
-  //scale to 0-100
-  //bleSerial.println("Main battery level: " + String(mainBatteryLevel) + "%");
+    // int mainBatteryLevel = analogRead(POWER_MAIN);
+    // scale to 0-100
+    // bleSerial.println("Main battery level: " + String(mainBatteryLevel) + "%");
 
     if (keysensor_cooldown)
     {
@@ -1128,8 +1072,7 @@ void loop()
         delayMicroseconds(360);
       }
 
-      //bleSerial.println(key_signal_tmp);
-      
+      // bleSerial.println(key_signal_tmp);
 
       digitalWrite(DEBUG_FFT, LOW);
 
@@ -1148,10 +1091,10 @@ void loop()
       // print
 
       // Serial.println("Frequency: " + String(frequency) + " Hz");
-       //bleSerial.println("Frequency of sampling: " + String(frequency*1000.0) + " Hz");
+      // bleSerial.println("Frequency of sampling: " + String(frequency*1000.0) + " Hz");
 
       // Serial.println("Time: " + String(time) + " ms");
-       //bleSerial.println("Time: " + String(time) + " ms");
+      // bleSerial.println("Time: " + String(time) + " ms");
 
       bool ok = false;
       if (read1 > (FFT_TEST_OUT_SAMPLES_LEN / 2) - 20 && read1 < (FFT_TEST_OUT_SAMPLES_LEN / 2) + 20)
@@ -1167,25 +1110,13 @@ void loop()
                     m_fft_output_f64,
                     FFT_TEST_OUT_SAMPLES_LEN);
 
-          //malloc
+        // malloc
         // float32_t *m_fft_output_f64_tmp = (float32_t *)malloc(FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
         // memcpy(m_fft_output_f64_tmp, m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
 
         // //malloc again
         // float32_t *m_fft_output_f64_tmp2 = (float32_t *)malloc(FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
         // memcpy(m_fft_output_f64_tmp2, m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN * sizeof(float32_t));
-
-
-
-
-
-
-
-
-
-        
-
-          
 
         // Draw FFT bin power chart.
         // draw_fft_header(sine_freq, noise);
@@ -1205,29 +1136,22 @@ void loop()
         float32_t max_value;
         uint32_t max_val_index;
 
-        //only keep positive frequencies
+        // PRINT FFT OUTPUT
 
         arm_max_f32(&m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2, &max_value, &max_val_index);
 
-        //get the second highest bin
+        // get the second highest bin
 
-        float32_t max_value2;
+        float32_t max_value2 = 69.0;
         uint32_t max_val_index2;
 
-        //remove the highest bin
-        m_fft_output_f64[max_val_index] = 0;
+        // remove the highest bin
+        //  m_fft_output_f64[max_val_index] = 0;
 
-        //get the second highest bin
-        arm_max_f32(&m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2, &max_value2, &max_val_index2);
-
-
-
-
-
+        // //get the second highest bin
+        // arm_max_f32(&m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2, &max_value2, &max_val_index2);
 
         float32_t frequency_of_max_bin = (float32_t)max_val_index * (float32_t)frequency * 1000.0 / (float32_t)FFT_TEST_OUT_SAMPLES_LEN;
-
-
 
         // Serial.println("Frequency of max bin: " + String(frequency_of_max_bin) + " Hz");
 
@@ -1237,73 +1161,241 @@ void loop()
 
         // check if number of 1s is between FFT_TEST_OUT_SAMPLES_LEN/2 +- 20
 
-        //TODO REMOVE NOISE FILTER
 
+        // scale the signal to 0-1 float
 
+        float32_t min_value, range;
 
-        if ((frequency_of_max_bin > 400) && (frequency_of_max_bin < 600))
+        arm_min_f32(&m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2, &min_value, NULL);
+
+        range = max_value - min_value;
+
+        arm_offset_f32(&m_fft_output_f64[0], -min_value, &m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2);
+
+        arm_scale_f32(&m_fft_output_f64[0], 1.0 / range, &m_fft_output_f64[0], FFT_TEST_OUT_SAMPLES_LEN / 2);
+
+        float32_t taps[9] = {0.00013383061741478741168975830078,
+                             0.00443186145275831222534179687500,
+                             0.05399112775921821594238281250000,
+                             0.24197144806385040283203125000000,
+                             0.39894348382949829101562500000000,
+                             0.24197144806385040283203125000000,
+                             0.05399112775921821594238281250000,
+                             0.00443186145275831222534179687500,
+                             0.00013383061741478741168975830078};
+
+        // use a fir filter to remove noise
+
+        arm_fir_instance_f32 fir;
+
+        arm_fir_init_f32(&fir, 9, taps, &m_fft_output_f64[64], FFT_TEST_OUT_SAMPLES_LEN / 2);
+
+        arm_fir_f32(&fir, m_fft_output_f64, &m_fft_output_f64[64], FFT_TEST_OUT_SAMPLES_LEN / 2);
+
+        // shift the signal to the left by 4
+
+        for (int i = 0; i < (FFT_TEST_OUT_SAMPLES_LEN / 2) - 4; i++)
+        {
+          m_fft_output_f64[i + 64] = m_fft_output_f64[i + 64 + 4];
+        }
+
+        // add 4 zeros to the end
+
+        for (int i = (FFT_TEST_OUT_SAMPLES_LEN)-4; i < (FFT_TEST_OUT_SAMPLES_LEN); i++)
+        {
+          m_fft_output_f64[i] = 0;
+        }
+
+        // we must ignore the first 4 bins because of the fir filter and
+
+        if ((frequency_of_max_bin > 400) && (frequency_of_max_bin < 600) && fft_calib_state != 3 && calibrationinprogress == 1)
 
         {
           // led on
 
-          digitalWrite(DEBUG_FFT, HIGH);
-          if (startsensing)
+          for (int i = 64; i < (FFT_TEST_OUT_SAMPLES_LEN); i++)
           {
-            key_signal = 1;
+            Serial.println(m_fft_output_f64[i]);
           }
-          bleSerial.println("VALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
-          //print index of max bin and value
-          bleSerial.println("index of max bin: " + String(max_val_index) + " value: " + String(max_value));
-          //print index of second max bin and value
-          bleSerial.println("2 max bin: " + String(max_val_index2) + " value: " + String(max_value2));
+
+          if (fft_calib_state == 0)
+          {
+
+            // add the signal to the calibration array
+
+            for (int i = 0; i < 64; i++)
+            {
+              ftt_of_ref[i] = m_fft_output_f64[i + 64];
+            }
+
+            fft_calib_state = 1;
+            bleSerial.println("calibration 1");
+            CalibrateCharacteristic.setValue('3');
+          }
+          else if (fft_calib_state == 1)
+          {
+
+            // add and compute the average of the calibration array
+
+            // use arm_mean_f32 to compute the mean and arm_add_f32 to add the signals
+
+            for (int i = 0; i < 64; i++)
+            {
+              ftt_of_ref[i] = (m_fft_output_f64[i + 64] + ftt_of_ref[i]) / 2;
+            }
+
+            fft_calib_state = 2;
+            bleSerial.println("calibration 2");
+             CalibrateCharacteristic.setValue('4');
+          }
+          else if (fft_calib_state == 2)
+          {
+
+            // add and compute the average of the calibration array
+
+            // use arm_mean_f32 to compute the mean and arm_add_f32 to add the signals
+
+            for (int i = 0; i < 64; i++)
+            {
+              ftt_of_ref[i] = (m_fft_output_f64[i + 64] + ftt_of_ref[i]) / 2.0;
+            }
+
+            for (int i = 0; i < 64; i++)
+            {
+              Serial.println(ftt_of_ref[i]);
+            }
+
+            bleSerial.println("calibration done");
+              switchCharacteristic.setValue('33');
+              state=0;
+
+
+
+            Serial.println("done");
+            CalibrateCharacteristic.setValue('5');
+            calibrationinprogress=0;
+
+            // get max value of calibration array
+
+            float32_t max_value_tmp;
+            uint32_t max_val_index_tmp;
+
+            arm_max_f32(&ftt_of_ref[0], 64, &max_value_tmp, &max_val_index_tmp);
+
+            max_val_index_ref = max_val_index_tmp;
+            max_value_ref = max_value_tmp;
+
+            Serial.println("max value ref: " + String(max_value_ref));
+            Serial.println("max index ref: " + String(max_val_index_ref));
+
+            bleSerial.println("max value ref: " + String(max_value_ref));
+            bleSerial.println("max index ref: " + String(max_val_index_ref));
+
+            fft_calib_state = 3;
+          }
+
+          digitalWrite(DEBUG_FFT, HIGH);
+          
+          keysensor_cooldown = 1;
+          key_signal_interval = 1000;
+          // if (fft_calib_state == 3)
+          // {
+          //   key_signal_interval = 10000;
+          // }
+        }
+        else if (fft_calib_state == 3 && (max_val_index > max_val_index_ref - 2) && (max_val_index < max_val_index_ref + 2))
+        {
+          // calculate hellinger distance beetwen ftt_of_ref and m_fft_output_f64[64]
+
+          Serial.println("FFT OUTPUT start");
+
+          for (int i = 0; i < 64; i++)
+          {
+            Serial.println(m_fft_output_f64[i + 64]);
+          }
+
+          float32_t sum = 0;
+
+          for (int i = 0; i < 64; i++)
+          {
+            m_fft_output_f64[i + 64] = sqrt(m_fft_output_f64[i + 64]) - sqrt(ftt_of_ref[i]);
+
+            // square the result
+
+            m_fft_output_f64[i + 64] = m_fft_output_f64[i + 64] * m_fft_output_f64[i + 64];
+
+            // sum the result
+
+            sum = sum + m_fft_output_f64[i + 64];
+          }
+
+          // take the square root of the sum
+
+          sum = sqrt(sum);
+
+          // print
+
+          Serial.println("FFT OUTPUT end " + String(sum));
+
+          if (sum <= hellinger_threshold)
+          {
+
+            if (startsensing)
+            {
+              key_signal = 1;
+            }
+
+            bleSerial.println("VALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
+            // print index of max bin and value
+
+            // calculate the matching percentage with how close the sum is to 0
+
+            digitalWrite(DEBUG_FFT, HIGH);
+
+            float32_t matching_percent = (hellinger_threshold - sum) / hellinger_threshold * 100;
+
+            bleSerial.println("Matching " + String(matching_percent) + "%");
+          }
+          else if (sum > hellinger_threshold)
+          {
+
+            bleSerial.println("INVALID 2");
+          }
+
           keysensor_cooldown = 1;
           key_signal_interval = 1000;
         }
-        else
-        {
-          // led of
-          //bleSerial.println("INVALID " + String(frequency_of_max_bin) + " Hz ons" + String(read1));
-           //bleSerial.println("index of max bin: " + String(max_val_index) + " value: " + String(max_value));
-        }
-        //draw_fft_data(m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN, GRAPH_WINDOW_HEIGHT);
+        // draw_fft_data(m_fft_output_f64, FFT_TEST_OUT_SAMPLES_LEN, GRAPH_WINDOW_HEIGHT);
       }
 
       // key_signal_begin=0;
-
-       
     }
 
-   
+    key_signal_begin = 0;
+    key_signal_count = 0;
+    read1 = 0;
+  }
 
-  
-    
+  // delay(1);
 
-      key_signal_begin = 0;
-      key_signal_count = 0;
-      read1 = 0;
-    }
+  // memset(readings, 0, sizeof(readings));
 
-    // delay(1);
+  // clear readings array using memset
+  // digitalWrite(LED_PIN, LOW);
 
-    // memset(readings, 0, sizeof(readings));
+  // sine_freq = 1000;
+  //  fft_generate_samples(m_fft_input_f64,
+  //                       FFT_TEST_COMP_SAMPLES_LEN,
+  //                       FFT_TEST_SAMPLE_FREQ_HZ,
+  //                       sine_freq, false);
 
-    // clear readings array using memset
-    // digitalWrite(LED_PIN, LOW);
+  // Process generated data. 64 pairs of complex data (real, img). It is important to use
+  // proper arm_cfft_sR_f32 structure associated with input/output data length.
+  // For example:
+  //  - 128 numbers in input array (64 complex pairs of samples) -> 64 output bins power data -> &arm_cfft_sR_f32_len64.
+  //  - 256 numbers in input array (128 complex pairs of samples) -> 128 output bins power data -> &arm_cfft_sR_f32_len128.
 
-    // sine_freq = 1000;
-    //  fft_generate_samples(m_fft_input_f64,
-    //                       FFT_TEST_COMP_SAMPLES_LEN,
-    //                       FFT_TEST_SAMPLE_FREQ_HZ,
-    //                       sine_freq, false);
-
-    // Process generated data. 64 pairs of complex data (real, img). It is important to use
-    // proper arm_cfft_sR_f32 structure associated with input/output data length.
-    // For example:
-    //  - 128 numbers in input array (64 complex pairs of samples) -> 64 output bins power data -> &arm_cfft_sR_f32_len64.
-    //  - 256 numbers in input array (128 complex pairs of samples) -> 128 output bins power data -> &arm_cfft_sR_f32_len128.
-
-    // delay(4000);
-  
+  // delay(4000);
 
   // unlock_reading = digitalRead(UNLOCK_SENSOR);
 
@@ -1366,8 +1458,8 @@ void loop()
   // press and stop
   if (currentMillis - previousMillis2 > ForceSensingInterval && startsensing != 0)
   {
-    //Serial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal));
-    //bleSerial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal));
+    // Serial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal));
+    // bleSerial.println("mid is: " + String(mid) + " " + "key_signal is: " + String(key_signal));
 
     // float sensorvoltage = getForceSensorVoltage();
     if (((key_signal == 1) || timeaccum >= MAX_UNLOCKING_TIME) && startsensing == 1)
@@ -1521,7 +1613,6 @@ void loop()
     }
     if (goback == 3 && (mid != midBeforeBack))
     {
-      CalibrateCharacteristic.setValue('33');
       Serial.println("SUCESS 3 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
       bleSerial.println("SUCESS 3 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
       digitalWrite(MOTOR_1, LOW);
@@ -1531,7 +1622,6 @@ void loop()
     }
     if (goback == 9 && gobacktime <= 0)
     {
-      CalibrateCharacteristic.setValue('33');
       Serial.println("SUCESS 9 went back ONLY using time: \n");
       bleSerial.println("SUCESS 9 went back ONLY using time: \n");
       digitalWrite(MOTOR_1, LOW);
@@ -1541,7 +1631,6 @@ void loop()
     if (goback == 4 && (mid != midBeforeBack))
     {
 
-      CalibrateCharacteristic.setValue('32');
 
       Serial.println("SUCESS 2 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
       bleSerial.println("SUCESS 2 went back changed mid sensor from %d to %d: " + String(midBeforeBack) + " to " + String(mid));
@@ -1555,7 +1644,6 @@ void loop()
     if (goback == 8 && gobacktime <= 0)
     {
 
-      CalibrateCharacteristic.setValue('32');
       Serial.println("SUCESS 8 went back ONLY using time: \n");
       bleSerial.println("SUCESS 8 went back ONLY using time: \n");
       digitalWrite(MOTOR_2, LOW);
@@ -1571,15 +1659,10 @@ void loop()
       bleSerial.println("Error went back didnt hit mid sensor: " + String(gobacktime));
       digitalWrite(MOTOR_1, LOW);
       digitalWrite(MOTOR_2, LOW);
-      if (calibrationinprogress == 0)
-      {
+    
         switchCharacteristic.setValue('34');
-      }
-      else
-      {
-        CalibrateCharacteristic.setValue('34');
-        calibrationinprogress = 0;
-      }
+      
+      
       goback = 0;
       gobacktime = 0;
     }
@@ -1587,15 +1670,31 @@ void loop()
     previousMillis3 = currentMillis;
   }
 
-  if (!someoneconnected && startsensing == 0 && goback == 0)
+  if (!someoneconnected && startsensing == 0 && goback == 0 && DO_SLEEP)
   {
-    //wait for event/interrupt (low power mode)
-    //Enter Low power mode
-    // Serial.println(F("Sleep"));
-    // sd_app_evt_wait();
-    // Serial.println(F("WakeUp"));
-    // sd_nvic_ClearPendingIRQ(SWI2_IRQn);
-    //poll peripheral
+    // wait for event/interrupt (low power mode)
+    // Enter Low power mode
+     Serial.println(F("Sleep"));
+
+    digitalWrite(SDN1, HIGH);
+    digitalWrite(SDN, HIGH);
+
+    //SENSORS TO SLEEP
+
+
+
+
+     sd_app_evt_wait();
+     Serial.println(F("WakeUp"));
+     sd_nvic_ClearPendingIRQ(SWI2_IRQn);
+
+    //SENSORS TO WAKE UP
+    digitalWrite(SDN1, LOW);
+    digitalWrite(SDN, LOW);
+
+
+
+    // poll peripheral
   }
 
   bleSerial.poll();
@@ -1637,8 +1736,13 @@ void blePeripheralConnectHandler(BLECentral &central)
   someoneconnected = true;
   unsigned char batteryLevel = getBatteryLevel();
 
-  Serial.println("Battery level: " + String(batteryLevel) + "%");
+  //check if calibrated if not set switch char to 5
 
+  if(max_val_index_ref==0 || max_value_ref==0 || calibrationinprogress==1){
+    switchCharacteristic.setValue('5');
+  }
+
+  Serial.println("Battery level: " + String(batteryLevel) + "%");
 
   batteryLevelCharacteristic.setValue(batteryLevel);
   int8_t temp_c = (int8_t)(temperature_data_get() - 10);
@@ -1651,7 +1755,7 @@ void blePeripheralDisconnectHandler(BLECentral &central)
   // central disconnected event handler
   Serial.print(F("Disconnected event, central: "));
   someoneconnected = false;
-  calibrationinprogress = 0;
+  //calibrationinprogress = 0;
 
   Serial.println(central.address());
   blinkLed(8, 100);
@@ -1686,7 +1790,7 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
       if (calibrationinprogress == 1)
       {
         calibrationinprogress = 0;
-        CalibrateCharacteristic.setValue('2');
+        CalibrateCharacteristic.setValue('6');
         // fix if user exits calibration prematurely
       }
       Serial.println(F("Going Forward"));
@@ -1709,7 +1813,7 @@ void switchCharacteristicWritten(BLECentral &central, BLECharacteristic &charact
       if (calibrationinprogress == 1)
       {
         calibrationinprogress = 0;
-        CalibrateCharacteristic.setValue('2');
+        CalibrateCharacteristic.setValue('6');
         // fix if user exits calibration prematurely
       }
       // print mid
@@ -1742,32 +1846,30 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic)
   }
   if ((int)a == 1)
   {
-    //change rf22 config to one of the values in choises array
+    // change rf22 config to one of the values in choises array
     bleSerial.println("state:");
-    bleSerial.println(signal2init?"signal init 2 ok":"signal init  2 failed");
+    bleSerial.println(signal2init ? "signal init 2 ok" : "signal init  2 failed");
 
-  //    int ok = rf22.init(&callback);
-  //  Serial.println(ok);
-  // if (ok)
-  // {
-  //   Serial.println("RF22 init ok");
-  //   bleSerial.println("RF22 init ok");
-  // }
-  // else
-  // {
-  //   Serial.println("RF22 init failed");
-  //   bleSerial.println("RF22 init failed");
-  // }
+    //    int ok = rf22.init(&callback);
+    //  Serial.println(ok);
+    // if (ok)
+    // {
+    //   Serial.println("RF22 init ok");
+    //   bleSerial.println("RF22 init ok");
+    // }
+    // else
+    // {
+    //   Serial.println("RF22 init failed");
+    //   bleSerial.println("RF22 init failed");
+    // }
 
-  
-
-    int okkk=rf22.setModemConfig(choises[choise]);
-    //print choise index and choise value
+    int okkk = rf22.setModemConfig(choises[choise]);
+    // print choise index and choise value
     Serial.print("choise index: ");
     Serial.print(choise);
     Serial.print(" choise value: ");
     Serial.println(choises[choise]);
-    //print rf22 config
+    // print rf22 config
     Serial.print("rf22 config: ");
     Serial.println(okkk);
 
@@ -1778,156 +1880,137 @@ void ManualWritten(BLECentral &central, BLECharacteristic &characteristic)
     bleSerial.print("rf22 config: ");
     bleSerial.println(okkk);
 
-
-    //wait for 1 second
+    // wait for 1 second
     delay(200);
 
-
-
-    //set to receive mode
+    // set to receive mode
     rf22.setModeRx();
-    
-    
-    //wait for 1 second
+
+    // wait for 1 second
     delay(100);
 
-    //set wake up timer to 1 second
-    //rf22.setWutPeriod(200,0,0);
+    // set wake up timer to 1 second
+    // rf22.setWutPeriod(200,0,0);
 
-
-    //get status
+    // get status
     uint8_t status = rf22.statusRead();
-    //print status
+    // print status
     Serial.print("status: ");
-    Serial.println(status,HEX);
+    Serial.println(status, HEX);
     bleSerial.println("status: ");
-    bleSerial.println(status,HEX);
+    bleSerial.println(status, HEX);
 
     // RH_RF22_REG_02_DEVICE_STATUS                    0x02
-#define RH_RF22_FFOVL                              0x80
-#define RH_RF22_FFUNFL                             0x40
-#define RH_RF22_RXFFEM                             0x20
-#define RH_RF22_HEADERR                            0x10
-#define RH_RF22_FREQERR                            0x08
-#define RH_RF22_LOCKDET                            0x04
-#define RH_RF22_CPS                                0x03
-#define RH_RF22_CPS_IDLE                           0x00
-#define RH_RF22_CPS_RX                             0x01
-#define RH_RF22_CPS_TX                             0x10
+#define RH_RF22_FFOVL 0x80
+#define RH_RF22_FFUNFL 0x40
+#define RH_RF22_RXFFEM 0x20
+#define RH_RF22_HEADERR 0x10
+#define RH_RF22_FREQERR 0x08
+#define RH_RF22_LOCKDET 0x04
+#define RH_RF22_CPS 0x03
+#define RH_RF22_CPS_IDLE 0x00
+#define RH_RF22_CPS_RX 0x01
+#define RH_RF22_CPS_TX 0x10
 
+    // get status
 
-//get status
+    // if status is 0x01
 
-    //if status is 0x01
-    
-    //if status is 0x10
-    if(status&RH_RF22_CPS_TX)
+    // if status is 0x10
+    if (status & RH_RF22_CPS_TX)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_CPS_TX");
       bleSerial.println("status is RH_RF22_CPS_TX");
     }
-    //if status is 0x00
-    if(status&RH_RF22_CPS_IDLE)
+    // if status is 0x00
+    if (status & RH_RF22_CPS_IDLE)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_CPS_IDLE");
       bleSerial.println("status is RH_RF22_CPS_IDLE");
     }
 
-    //if status is 0x80
-    if(status&RH_RF22_FFOVL)
+    // if status is 0x80
+    if (status & RH_RF22_FFOVL)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_FFOVL");
       bleSerial.println("status is RH_RF22_FFOVL");
     }
-    //if status is 0x40
-    if(status&RH_RF22_FFUNFL)
+    // if status is 0x40
+    if (status & RH_RF22_FFUNFL)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_FFUNFL");
       bleSerial.println("status is RH_RF22_FFUNFL");
     }
-    //if status is 0x20
-    if(status&RH_RF22_RXFFEM)
+    // if status is 0x20
+    if (status & RH_RF22_RXFFEM)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_RXFFEM");
       bleSerial.println("status is RH_RF22_RXFFEM");
     }
-    //if status is 0x10
-    if(status&RH_RF22_HEADERR)
+    // if status is 0x10
+    if (status & RH_RF22_HEADERR)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_HEADERR");
       bleSerial.println("status is RH_RF22_HEADERR");
     }
-    //if status is 0x08
-    if(status&RH_RF22_FREQERR)
+    // if status is 0x08
+    if (status & RH_RF22_FREQERR)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_FREQERR");
       bleSerial.println("status is RH_RF22_FREQERR");
     }
-    //if status is 0x04
-    if(status&RH_RF22_LOCKDET)
+    // if status is 0x04
+    if (status & RH_RF22_LOCKDET)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_LOCKDET");
       bleSerial.println("status is RH_RF22_LOCKDET");
     }
 
-    //if status is 0x03
-    if(status&RH_RF22_CPS)
+    // if status is 0x03
+    if (status & RH_RF22_CPS)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_CPS");
       bleSerial.println("status is RH_RF22_CPS");
     }
 
-    //if status is 0x00
-    if(status&RH_RF22_CPS_IDLE)
+    // if status is 0x00
+    if (status & RH_RF22_CPS_IDLE)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_CPS_IDLE");
       bleSerial.println("status is RH_RF22_CPS_IDLE");
     }
-    //if status is 0x01
-    if(status&RH_RF22_CPS_RX)
+    // if status is 0x01
+    if (status & RH_RF22_CPS_RX)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_CPS_RX");
       bleSerial.println("status is RH_RF22_CPS_RX");
     }
-    //if status is 0x10
-    if(status&RH_RF22_CPS_TX)
+    // if status is 0x10
+    if (status & RH_RF22_CPS_TX)
     {
-      //print status
+      // print status
       Serial.println("status is RH_RF22_CPS_TX");
       bleSerial.println("status is RH_RF22_CPS_TX");
     }
 
-
-
-
-    
-    
-
-
-
-
-
-   
-    
-    
-    //increase choise index
+    // increase choise index
     choise++;
-    //if choise index is bigger than choises array size
-    if(choise>=24)
+    // if choise index is bigger than choises array size
+    if (choise >= 24)
     {
-      //reset choise index
-      choise=0;
+      // reset choise index
+      choise = 0;
     }
 
     Serial.println(F("Manual Forward"));
@@ -1962,92 +2045,32 @@ void CalibrateWritten(BLECentral &central, BLECharacteristic &characteristic)
     Serial.println((char)CalibrateCharacteristic.value());
     if (CalibrateCharacteristic.value() == '1')
     {
-      Serial.println(F("Calibrate Going Forward"));
-      calibdir = 1;
+      Serial.println(F("Calibrate Sensor active"));
+      
 
-      if (!calibrationinprogress)
-      {
-        LOCKING_TIME = MIN_LOCKING_TIME;
-        calibrationinprogress = 1;
-        check_mid = 1;
-        midBefore = mid;
-        startsensing = 1;
-        digitalWrite(MOTOR_1, HIGH);
-      }
-      else if (LOCKING_TIME < MAX_LOCKING_TIME)
-      {
-        Serial.println(F("Increasing LOCKING_TIME TRYING AGAIN"));
-        LOCKING_TIME += 200;
-        midBefore = mid;
-        check_mid = 1;
-        startsensing = 1;
-        digitalWrite(MOTOR_1, HIGH);
-      }
-      else
-      {
-        CalibrateCharacteristic.setValue('35');
+      
+        calibrationinprogress =1;
+        fft_calib_state = 0;
+      
+        //this starts the calibration
+        //set the caracteristic to 2 when done
+        CalibrateCharacteristic.setValue('2');
+
+      
+    }else if (CalibrateCharacteristic.value() == '5'){
+      //end calibration
+      if (calibrationinprogress){
         calibrationinprogress = 0;
-        return;
+       
       }
+      Serial.println(F("Calibration ended ok"));
+    }else if (CalibrateCharacteristic.value() == '6'){
+      
+      Serial.println(F("Calibration failed"));
     }
-
-    if (CalibrateCharacteristic.value() == '0')
-    {
-      Serial.println(F("Calibrate Going Backward"));
-
-      calibdir = 2;
-
-      if (!calibrationinprogress)
-      {
-        UNLOCKING_TIME = MIN_UNLOCKING_TIME;
-        calibrationinprogress = 1;
-        check_mid = 1;
-        midBefore = mid;
-        startsensing = 2;
-        digitalWrite(MOTOR_2, HIGH);
-      }
-      else if (UNLOCKING_TIME < MAX_UNLOCKING_TIME)
-      {
-        Serial.println(F("Increasing UNLOCKING_TIME TRYING AGAIN"));
-        UNLOCKING_TIME += 200;
-        check_mid = 1;
-        midBefore = mid;
-        startsensing = 2;
-        digitalWrite(MOTOR_2, HIGH);
-      }
-      else
-      {
-        CalibrateCharacteristic.setValue('35');
-        calibrationinprogress = 0;
-        return;
-      }
-    }
-
-    if (CalibrateCharacteristic.value() == '2')
-    {
-
-      // OK we are done calibrating
-
-      if (calibrationinprogress == 1)
-      {
-
-        if (calibdir == 2)
-        {
-          UNLOCKING_TIME += 200;
-          calibdir = 0;
-        }
-        if (calibdir == 1)
-        {
-          LOCKING_TIME += 200;
-          calibdir = 0;
-        }
-      }
-
-      calibrationinprogress = 0;
-      Serial.println(F("Calibrate Done"));
-      Serial.println(startsensing);
+    
       // save to flash
-    }
+    
   }
   else
   {
@@ -2194,13 +2217,6 @@ void bleRemoteDeviceNameCharacteristicValueUpdatedHandle(BLECentral &central, BL
   }
   Serial.print(F("Remote device name: "));
   Serial.println(remoteDeviceName);
-}
-float getForceSensorVoltage()
-{
-  int sensorValue = analogRead(A4);
-  float voltage = sensorValue * (3.3 / 1023.0);
-  Serial.println("Analog pin 6: " + String(voltage) + " V");
-  return voltage;
 }
 unsigned char getBatteryLevel(void)
 {
